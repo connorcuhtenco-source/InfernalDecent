@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Infernal Descent: The Broken Curse</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════ MAIN MENU ═══════════════════ -->
+  <div id="screen-menu" class="screen active">
+    <div id="menuParticles" class="menu-particles"></div>
+    <div class="menu-content">
+      <div class="game-logo">
+        <div class="logo-eyebrow">INFERNAL</div>
+        <div class="logo-title">DESCENT</div>
+        <div class="logo-tagline">The Broken Curse</div>
+      </div>
+      <nav class="menu-nav">
+        <button class="menu-btn primary" id="btnStart">▶ Begin Descent</button>
+        <button class="menu-btn" id="btnStory">📜 The Curse</button>
+        <button class="menu-btn" id="btnHowTo">⚔ How to Play</button>
+        <button class="menu-btn" id="btnCredits">✦ Credits</button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ STORY ═══════════════════ -->
+  <div id="screen-story" class="screen">
+    <div class="subscreen">
+      <h2 class="subscreen-title">The Curse</h2>
+      <div class="story-body">
+        <p>You are a <strong>fallen warrior</strong> whose soul has been dragged into Purgatory.</p>
+        <p>Upon awakening before the rusted gates of the underworld, you discover a terrible truth:</p>
+        <p class="story-emphasis">"The only way out is down."</p>
+        <p>A mysterious curse binds countless souls to Hell. To escape, you must descend through the layers of the underworld, harvest souls from the damned, grow stronger, and destroy the source of the curse itself.</p>
+        <p>Three seals. Three guardians. One truth buried beneath it all.</p>
+      </div>
+      <button class="menu-btn" id="btnStoryBack">← Back</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ HOW TO PLAY ═══════════════════ -->
+  <div id="screen-howto" class="screen">
+    <div class="subscreen">
+      <h2 class="subscreen-title">How to Play</h2>
+      <div class="howto-grid">
+        <div class="howto-row"><span class="key-badge">W A S D</span><span>Move</span></div>
+        <div class="howto-row"><span class="key-badge">SPACE</span><span>Attack</span></div>
+        <div class="howto-row"><span class="key-badge">SHIFT</span><span>Dash</span></div>
+        <div class="howto-row"><span class="key-badge">E</span><span>Special Ability</span></div>
+        <div class="howto-row"><span class="key-badge">R</span><span>Interact / Upgrade</span></div>
+        <div class="howto-row"><span class="key-badge">ESC</span><span>Pause</span></div>
+      </div>
+      <div class="howto-tips">
+        <p>⚔ Kill enemies to collect <strong>Souls</strong>.</p>
+        <p>💀 Spend Souls at <strong>Checkpoints</strong> to upgrade your stats.</p>
+        <p>🔥 Defeat the <strong>Boss</strong> to break the seal and descend deeper.</p>
+      </div>
+      <button class="menu-btn" id="btnHowToBack">← Back</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ CREDITS ═══════════════════ -->
+  <div id="screen-credits" class="screen">
+    <div class="subscreen">
+      <h2 class="subscreen-title">Credits</h2>
+      <div class="credits-body">
+        <p class="credits-game-name">Infernal Descent: The Broken Curse</p>
+        <p>A browser-based dungeon crawler</p>
+        <br/>
+        <p>Built with pure HTML, CSS &amp; JavaScript</p>
+        <p>No external frameworks were harmed.</p>
+      </div>
+      <button class="menu-btn" id="btnCreditsBack">← Back</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ PAUSE ═══════════════════ -->
+  <div id="screen-pause" class="screen overlay-screen hidden">
+    <div class="modal-box">
+      <h2 class="modal-title">— PAUSED —</h2>
+      <button class="menu-btn primary" id="btnResume">▶ Resume</button>
+      <button class="menu-btn" id="btnRestart">↺ Restart</button>
+      <button class="menu-btn" id="btnPauseQuit">✕ Main Menu</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ GAME OVER ═══════════════════ -->
+  <div id="screen-gameover" class="screen overlay-screen hidden">
+    <div class="modal-box death-box">
+      <div class="end-icon">💀</div>
+      <h2 class="modal-title">YOU HAVE FALLEN</h2>
+      <p id="deathCause" class="end-subtitle"></p>
+      <div id="gameoverStats" class="end-stats"></div>
+      <button class="menu-btn primary" id="btnGameOverRestart">↺ Try Again</button>
+      <button class="menu-btn" id="btnGameOverMenu">✕ Main Menu</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ VICTORY ═══════════════════ -->
+  <div id="screen-victory" class="screen overlay-screen hidden">
+    <div class="modal-box victory-box">
+      <div class="end-icon">⚡</div>
+      <h2 class="modal-title">THE CURSE IS BROKEN</h2>
+      <div class="victory-story">
+        <p>"I was never your enemy. I was your prison."</p>
+        <p>The curse shatters. The trapped souls rise. The warrior ascends from darkness — and finally escapes damnation.</p>
+      </div>
+      <div id="victoryStats" class="end-stats"></div>
+      <button class="menu-btn primary" id="btnPlayAgain">▶ Play Again</button>
+      <button class="menu-btn" id="btnVictoryMenu">✕ Main Menu</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ UPGRADE ═══════════════════ -->
+  <div id="screen-upgrade" class="screen overlay-screen hidden">
+    <div class="modal-box upgrade-box">
+      <h2 class="modal-title">⚜ CHECKPOINT ⚜</h2>
+      <p class="upgrade-subtitle">Spend souls to grow stronger</p>
+      <div class="upgrade-souls-display">Souls: <span id="upgradeSoulsCount">0</span></div>
+      <div id="upgradeOptions" class="upgrade-options"></div>
+      <button class="menu-btn primary" id="btnUpgradeContinue">Continue Descent →</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ GAME ═══════════════════ -->
+  <div id="screen-game" class="screen hidden">
+
+    <!-- TOP HUD -->
+    <div id="hud-top">
+      <div id="hud-left">
+        <div class="hud-label">HP</div>
+        <div class="bar-wrap">
+          <div id="hpBar" class="bar hp-bar"></div>
+        </div>
+        <div id="hpText" class="hud-value">100 / 100</div>
+      </div>
+      <div id="hud-center">
+        <div class="hud-layer-label">LAYER</div>
+        <div id="layerRoman" class="hud-layer-num">I</div>
+        <div id="layerName" class="hud-layer-name">Gates of Despair</div>
+      </div>
+      <div id="hud-right">
+        <div class="hud-label">SOULS</div>
+        <div id="soulCount" class="soul-count">💀 0</div>
+      </div>
+    </div>
+
+    <!-- BOTTOM HUD -->
+    <div id="hud-bottom">
+      <div id="hud-weapon">
+        <div class="hud-label">WEAPON</div>
+        <div id="weaponName" class="weapon-name">Rusted Sword</div>
+      </div>
+      <div id="hud-abilities">
+        <div class="ability-slot" id="slotDash">
+          <div class="ability-icon">💨</div>
+          <div class="ability-name">DASH</div>
+          <div class="ability-cd" id="dashCd"></div>
+        </div>
+        <div class="ability-slot" id="slotSpecial">
+          <div class="ability-icon">⚡</div>
+          <div class="ability-name">SPECIAL</div>
+          <div class="ability-cd" id="specialCd"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOSS HUD -->
+    <div id="bossHud" class="hidden">
+      <div id="bossName" class="boss-name">The Gatekeeper</div>
+      <div class="bar-wrap boss-bar-wrap">
+        <div id="bossBar" class="bar boss-bar"></div>
+      </div>
+      <div id="bossPhase" class="boss-phase">Phase I</div>
+    </div>
+
+    <!-- INTERACT PROMPT -->
+    <div id="interactPrompt" class="interact-prompt hidden">
+      Press <span class="key-inline">R</span> to <span id="interactAction">interact</span>
+    </div>
+
+    <!-- ROOM / WAVE INFO -->
+    <div id="roomInfo" class="room-info hidden"></div>
+
+    <!-- CANVAS -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- FLOATING DAMAGE NUMBERS -->
+    <div id="damageLayer"></div>
+
+  </div><!-- /screen-game -->
+
+  <script src="script.js"></script>
+</body>
+</html>
