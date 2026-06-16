@@ -1,7 +1,7 @@
 'use strict';
 
 import { Input, Particles, spawnEmbers } from './engine.js';
-import { TileMap } from './world.js'; 
+import { TileMap, makeTutorialMap, makeLayer1Map } from './world.js'; 
 import { Player, Enemy, Gatekeeper, TutorialBoss, ENEMY_DEFS } from './entities.js';
 
 class Game {
@@ -87,7 +87,7 @@ class Game {
     this._bindBtn('btnVictoryPlay', () => this.startGameJourney());
     this._bindBtn('btnVictoryMenu', () => this.switchScreen('menu'));
 
-    // --- FIXED: TUTORIAL DIALOGUE PROGRESSION ---
+    // --- TUTORIAL DIALOGUE PROGRESSION ---
     this._bindBtn('wispNext', () => this.advanceDialogue());
   }
 
@@ -128,29 +128,76 @@ class Game {
   startGameJourney() {
     this.switchScreen('game');
     
-    // Fallback grid generation matching your world structural properties
-    const sampleGrid = [
-      [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-      [2, 1, 1, 1, 1, 1, 1, 1, 1, 2],
-      [2, 1, 1, 1, 1, 1, 1, 1, 1, 2],
-      [2, 1, 1, 4, 1, 1, 1, 3, 1, 2],
-      [2, 1, 1, 1, 1, 1, 1, 1, 1, 2],
-      [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-    ];
-    this.world.map = new TileMap(sampleGrid, {});
-    
-    this.player = new Player(150, 150, this.selectedClass);
-    this.enemies = [];
-    
-    this.resizeCanvas();
-    window.addEventListener('resize', () => this.resizeCanvas());
+    // 1. Force absolute fallback canvas dimensions immediately
+    if (this.canvas) {
+      this.canvas.width = window.innerWidth || 800;
+      this.canvas.height = window.innerHeight || 600;
+    }
 
-    // Trigger dialogue interaction presentation frame setup
+    const sampleGrid = [
+      [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+      [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+      [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+      [2, 1, 1, 4, 1, 1, 1, 5, 1, 1, 1, 1, 1, 1, 2],
+      [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+      [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    ];
+    
+    // Explicitly fallback to a default tileSize configuration
+    this.world.map = new TileMap(sampleGrid, { tileSize: 64 });
+    this.player = new Player(150, 150, this.selectedClass);
+    
+    // Ensure initial camera position starts matching player coordinates instead of 0,0
+    this.camera.x = this.player.x - (this.canvas ? this.canvas.width / 2 : 400);
+    this.camera.y = this.player.y - (this.canvas ? this.canvas.height / 2 : 300);
+
+    this.enemies = [
+      new Enemy(300, 200, ENEMY_DEFS ? ENEMY_DEFS.husk : 'husk'),
+      new Enemy(500, 250, ENEMY_DEFS ? ENEMY_DEFS.husk : 'husk'),
+      new Gatekeeper(700, 300)
+    ];
+    
+    window.addEventListener('resize', () => this.resizeCanvas());
     this.startTutorialDialogue();
 
     this.lastTime = performance.now();
     this.isRunning = true;
     requestAnimationFrame((t) => this.loop(t));
+  }
+
+  resizeCanvas() {
+    if (!this.canvas) return;
+    // Fallback safeguard preventing 0 width/height updates
+    this.canvas.width = window.innerWidth || 800;
+    this.canvas.height = window.innerHeight || 600;
+  }
+
+  draw(ctx, W, H) {
+    // Prevent rendering entirely if critical entities aren't loaded yet
+    if (!this.player || !this.world.map) return;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#1a1625'; 
+    ctx.fillRect(0, 0, W, H);
+    
+    // Safe-check camera calculations against NaN anomalies
+    const cx = isNaN(this.camera.x) ? 0 : this.camera.x;
+    const cy = isNaN(this.camera.y) ? 0 : this.camera.y;
+    
+    this.world.map.draw(ctx, cx, cy, W, H);
+    
+    if (this.settings.particles && this.particles) {
+      this.particles.draw(ctx, cx, cy);
+    }
+
+    if (this.enemies) {
+      this.enemies.forEach(enemy => {
+        if (typeof enemy.draw === 'function') enemy.draw(ctx, cx, cy);
+      });
+    }
+
+    this.player.draw(ctx, cx, cy);
+    this._updateHudDOM();
   }
 
   startTutorialDialogue() {
@@ -171,10 +218,9 @@ class Game {
 
     if (!wispBox || !wispTxt) return;
 
-    // Fixed: Ensure we check if we have surpassed the last valid index BEFORE attempting to display text
     if (this.dialogueIndex >= this.dialogueSequence.length) {
       wispBox.classList.add('hidden');
-      wispBox.style.display = 'none'; // Hard force style clear in case CSS specificity is fighting classList
+      wispBox.style.display = 'none'; 
     } else {
       wispTxt.textContent = this.dialogueSequence[this.dialogueIndex];
     }
@@ -210,6 +256,12 @@ class Game {
       this.switchScreen('pause');
       return;
     }
+
+    // LINKED PROGRESSION LAYER: Evaluates if the player's coordinate step lands on an exit tile (value 5)
+    const currentTile = this.world.map.tileAtPx(this.player.x, this.player.y);
+    if (currentTile === 5) { 
+       this.advanceToLayer1();
+    }
     
     this.camera.x += ((this.player.x - this.canvas.width / 2) - this.camera.x) * 0.1;
     this.camera.y += ((this.player.y - this.canvas.height / 2) - this.camera.y) * 0.1;
@@ -217,6 +269,46 @@ class Game {
     if (this.settings.particles && this.particles) {
       this.particles.update(dt);
     }
+  }
+
+  advanceToLayer1() {
+    // 1. Swap the map over to Layer 1
+    this.world.map = makeLayer1Map();
+    
+    // 2. Clear out old enemies
+    this.enemies = []; 
+    
+    // 3. Dynamic Spawn Finder: Scan the new map grid to find a safe floor tile (1)
+    let spawnTileX = 1;
+    let spawnTileY = 1;
+    let foundSpawn = false;
+    
+    const grid = this.world.map.grid;
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < grid[r].length; c++) {
+        if (grid[r][c] === 1) { // 1 is your T.FLOOR constant
+          spawnTileX = c;
+          spawnTileY = r;
+          foundSpawn = true;
+          break;
+        }
+      }
+      if (foundSpawn) break;
+    }
+    
+    // 4. Calculate coordinates using the actual map width/columns to find your exact TILE size
+    // This dynamically calculates the tile size so it works whether your tiles are 32px, 48px, or 64px!
+    const calculatedTileSize = this.world.map.width / this.world.map.cols;
+    
+    // 5. Center the player perfectly inside that open tile
+    this.player.x = (spawnTileX * calculatedTileSize) + (calculatedTileSize / 2);
+    this.player.y = (spawnTileY * calculatedTileSize) + (calculatedTileSize / 2);
+    
+    // 6. Snap the camera over to the player so there is no boundary-glitching scroll lag
+    this.camera.x = this.player.x - this.canvas.width / 2;
+    this.camera.y = this.player.y - this.canvas.height / 2;
+    
+    console.log(`Spawned safely at Tile Column: ${spawnTileX}, Row: ${spawnTileY} (Px: ${this.player.x}, ${this.player.y})`);
   }
 
   draw(ctx, W, H) {
