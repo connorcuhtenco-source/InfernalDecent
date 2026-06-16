@@ -8,9 +8,6 @@
 </head>
 <body>
 
-<!-- ████████████████████████████████████████
-     SCREEN: MAIN MENU
-████████████████████████████████████████ -->
 <div id="screen-menu" class="screen active">
   <div id="menuEmbers" class="ember-container"></div>
 
@@ -31,9 +28,6 @@
   </div>
 </div>
 
-<!-- ████████████████████████████████████████
-     SCREEN: STORY
-████████████████████████████████████████ -->
 <div id="screen-story" class="screen hidden">
   <div class="sub-wrap">
     <h2 class="sub-title">The Curse</h2>
@@ -50,9 +44,6 @@
   </div>
 </div>
 
-<!-- ████████████████████████████████████████
-     SCREEN: HOW TO PLAY
-████████████████████████████████████████ -->
 <div id="screen-howto" class="screen hidden">
   <div class="sub-wrap">
     <h2 class="sub-title">How to Play</h2>
@@ -75,9 +66,6 @@
   </div>
 </div>
 
-<!-- ████████████████████████████████████████
-     SCREEN: SETTINGS
-████████████████████████████████████████ -->
 <div id="screen-settings" class="screen hidden">
   <div class="sub-wrap">
     <h2 class="sub-title">Settings</h2>
@@ -120,9 +108,6 @@
   </div>
 </div>
 
-<!-- ████████████████████████████████████████
-     SCREEN: CREDITS
-████████████████████████████████████████ -->
 <div id="screen-credits" class="screen hidden">
   <div class="sub-wrap">
     <h2 class="sub-title">Credits</h2>
@@ -137,16 +122,12 @@
   </div>
 </div>
 
-<!-- ████████████████████████████████████████
-     SCREEN: CLASS SELECT
-████████████████████████████████████████ -->
 <div id="screen-classselect" class="screen hidden">
   <div class="classselect-wrap">
     <div class="classselect-title">SOULS</div>
     <div class="classselect-sub">Choose your path into damnation</div>
     <div class="class-cards">
 
-      <!-- WARRIOR -->
       <div class="class-card" id="card-warrior" data-class="warrior">
         <div class="class-card-icon">🗡</div>
         <div class="class-card-name">WARRIOR</div>
@@ -164,7 +145,6 @@
         <button class="btn btn-primary class-select-btn" data-class="warrior">Select Warrior</button>
       </div>
 
-      <!-- ASSASSIN -->
       <div class="class-card" id="card-assassin" data-class="assassin">
         <div class="class-card-icon">🗡</div>
         <div class="class-card-name">ASSASSIN</div>
@@ -182,7 +162,6 @@
         <button class="btn btn-primary class-select-btn" data-class="assassin">Select Assassin</button>
       </div>
 
-      <!-- MAGE -->
       <div class="class-card" id="card-mage" data-class="mage">
         <div class="class-card-icon">🔮</div>
         <div class="class-card-name">MAGE</div>
@@ -200,13 +179,9 @@
         <button class="btn btn-primary class-select-btn" data-class="mage">Select Mage</button>
       </div>
 
-    </div><!-- /class-cards -->
-  </div>
+    </div></div>
 </div>
 
-<!-- ████████████████████████████████████████
-     SCREEN: PAUSE
-████████████████████████████████████████ -->
 <div id="screen-pause" class="screen overlay hidden">
   <div class="modal">
     <div class="modal-title">— PAUSED —</div>
@@ -216,9 +191,6 @@
   </div>
 </div>
 
-<!-- ████████████████████████████████████████
-     SCREEN: SKILL TREE
-████████████████████████████████████████ -->
 <div id="screen-skilltree" class="screen overlay hidden">
   <div class="modal skilltree-modal">
     <div class="modal-title">⚜ SKILL TREE ⚜</div>
@@ -232,9 +204,6 @@
   </div>
 </div>
 
-<!-- ████████████████████████████████████████
-     SCREEN: GAME OVER
-████████████████████████████████████████ -->
 <div id="screen-gameover" class="screen overlay hidden">
   <div class="modal death-modal">
     <div class="end-icon">💀</div>
@@ -246,9 +215,6 @@
   </div>
 </div>
 
-<!-- ████████████████████████████████████████
-     SCREEN: VICTORY
-████████████████████████████████████████ -->
 <div id="screen-victory" class="screen overlay hidden">
   <div class="modal victory-modal">
     <div class="end-icon">⚡</div>
@@ -261,12 +227,8 @@
   </div>
 </div>
 
-<!-- ████████████████████████████████████████
-     SCREEN: GAME
-████████████████████████████████████████ -->
 <div id="screen-game" class="screen hidden">
 
-  <!-- TOP HUD -->
   <div id="hud-top">
     <div id="hud-left">
       <div class="hud-row">
@@ -294,7 +256,6 @@
     </div>
   </div>
 
-  <!-- BOTTOM HUD -->
   <div id="hud-bottom">
     <div id="hud-weapon-display">
       <div class="hud-label">WEAPON</div>
@@ -325,39 +286,30 @@
     </div>
   </div>
 
-  <!-- BOSS BAR -->
   <div id="bossHud" class="hidden">
     <div id="bossName" class="boss-name">The Gatekeeper</div>
     <div class="boss-bar-track"><div id="bossBar" class="boss-bar-fill"></div></div>
     <div id="bossPhase" class="boss-phase-label">Phase I</div>
   </div>
 
-  <!-- INTERACT PROMPT -->
   <div id="interactPrompt" class="interact-prompt hidden">
     Press <span class="key-inline">R</span> to <span id="interactAction">interact</span>
   </div>
 
-  <!-- ROOM / WAVE INFO -->
   <div id="roomInfo" class="room-info hidden"></div>
 
-  <!-- WISP DIALOGUE (tutorial) -->
   <div id="wispDialogue" class="wisp-dialogue hidden">
     <div class="wisp-icon">🔵</div>
     <div class="wisp-text" id="wispText">Follow me, warrior...</div>
     <button class="wisp-next" id="wispNext">Continue →</button>
   </div>
 
-  <!-- CANVAS -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- FLOATING DAMAGE NUMBERS -->
   <div id="damageLayer"></div>
 
-  <!-- BRIGHTNESS OVERLAY -->
   <div id="brightnessOverlay"></div>
 
-</div><!-- /screen-game -->
-
-<script type="module" src="game.js"></script>
+</div><script type="module" src="game.js"></script>
 </body>
 </html>
