@@ -3,6 +3,7 @@
 import { Input, Particles, spawnEmbers } from './engine.js';
 import { TileMap, makeTutorialMap, makeLayer1Map } from './world.js'; 
 import { Player, Enemy, Gatekeeper, TutorialBoss, ENEMY_DEFS } from './entities.js';
+import { T, TILE } from './constants.js';
 
 class Game {
   constructor() {
@@ -61,8 +62,8 @@ class Game {
     const cards = document.querySelectorAll('.class-card');
     cards.forEach(card => {
       card.addEventListener('click', () => {
-        cards.forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
+        cards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
         this.selectedClass = card.dataset.class;
       });
 
@@ -89,6 +90,13 @@ class Game {
 
     // --- TUTORIAL DIALOGUE PROGRESSION ---
     this._bindBtn('wispNext', () => this.advanceDialogue());
+    // --- SKILL TREE CLOSE ---
+    this._bindBtn('btnSkillTreeClose', () => {
+      this.switchScreen('game');
+      this.lastTime = performance.now();
+      this.isRunning = true;
+      requestAnimationFrame((t) => this.loop(t));
+    });
   }
 
   _bindBtn(id, callback) {
@@ -134,31 +142,54 @@ class Game {
       this.canvas.height = window.innerHeight || 600;
     }
 
-    const sampleGrid = [
-      [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-      [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
-      [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
-      [2, 1, 1, 4, 1, 1, 1, 5, 1, 1, 1, 1, 1, 1, 2],
-      [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
-      [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-    ];
-    
-    // Explicitly fallback to a default tileSize configuration
-    this.world.map = new TileMap(sampleGrid, { tileSize: 64 });
-    this.player = new Player(150, 150, this.selectedClass);
-    
-    // Ensure initial camera position starts matching player coordinates instead of 0,0
+    // Use the authored tutorial map which contains a checkpoint and exit
+    this.world.map = makeTutorialMap();
+
+    // Find a safe spawn tile (prefer checkpoint tiles)
+    const grid = this.world.map.grid;
+    let spawnC = 0, spawnR = 0, found = false;
+    for (let r = 0; r < grid.length && !found; r++) {
+      for (let c = 0; c < grid[r].length; c++) {
+        if (grid[r][c] === T.CHECKPOINT) { spawnC = c; spawnR = r; found = true; break; }
+      }
+    }
+    if (!found) {
+      for (let r = 0; r < grid.length && !found; r++) {
+        for (let c = 0; c < grid[r].length; c++) {
+          if (grid[r][c] === T.FLOOR) { spawnC = c; spawnR = r; found = true; break; }
+        }
+      }
+    }
+
+    this.player = new Player(spawnC * TILE + TILE / 2, spawnR * TILE + TILE / 2, this.selectedClass);
+
+    // Ensure initial camera position starts matching player coordinates
     this.camera.x = this.player.x - (this.canvas ? this.canvas.width / 2 : 400);
     this.camera.y = this.player.y - (this.canvas ? this.canvas.height / 2 : 300);
 
-    this.enemies = [
-      new Enemy(300, 200, ENEMY_DEFS ? ENEMY_DEFS.husk : 'husk'),
-      new Enemy(500, 250, ENEMY_DEFS ? ENEMY_DEFS.husk : 'husk'),
-      new Gatekeeper(700, 300)
-    ];
+    // Spawn a few enemies on valid floor tiles, avoiding too-close tiles
+    const enemyPositions = [];
+    for (let r = 0; r < grid.length && enemyPositions.length < 4; r++) {
+      for (let c = 0; c < grid[r].length && enemyPositions.length < 4; c++) {
+        if (grid[r][c] === T.FLOOR) {
+          const ex = c * TILE + TILE / 2, ey = r * TILE + TILE / 2;
+          const dist = Math.hypot(ex - this.player.x, ey - this.player.y);
+          if (dist > TILE * 2) enemyPositions.push({ x: ex, y: ey });
+        }
+      }
+    }
+    this.enemies = enemyPositions.map((p, i) => new Enemy(p.x, p.y, ENEMY_DEFS.huskWalker));
+    // Add the gatekeeper deeper in the level (only if map is large enough)
+    if (this.world.map.cols > 10) {
+      this.enemies.push(new Gatekeeper((this.world.map.cols - 3) * TILE + TILE / 2, (this.world.map.rows - 3) * TILE + TILE / 2));
+    }
+    this.initialEnemyCount = this.enemies.length;
     
     window.addEventListener('resize', () => this.resizeCanvas());
     this.startTutorialDialogue();
+
+    // Clean stray overlay elements (empty DIVs that might show as boxes)
+    if (typeof this._cleanUiOverlays === 'function') this._cleanUiOverlays();
 
     this.lastTime = performance.now();
     this.isRunning = true;
@@ -226,11 +257,6 @@ class Game {
     }
   }
 
-  resizeCanvas() {
-    if (!this.canvas) return;
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-  }
 
   loop(timestamp) {
     if (!this.isRunning) return;
@@ -257,10 +283,78 @@ class Game {
       return;
     }
 
-    // LINKED PROGRESSION LAYER: Evaluates if the player's coordinate step lands on an exit tile (value 5)
+    // Handle player interaction (skill tree / descend)
+    if (action === 'interact') {
+      const tile = this.world.map.tileAtPx(this.player.x, this.player.y);
+      // CHECKPOINT opens skill tree
+      if (tile === 4) {
+        this.switchScreen('skilltree');
+        this.isRunning = false;
+        return;
+      }
+      // EXIT descends to next layer
+      if (tile === T.EXIT) {
+        const alive = (this.enemies || []).filter(e => e.alive).length;
+        const allowed = Math.max(0, Math.ceil((this.initialEnemyCount || this.enemies.length) * 0.1));
+        if (alive <= allowed) {
+          this.advanceToLayer1();
+          const ip = document.getElementById('interactPrompt');
+          if (ip) ip.classList.add('hidden');
+        }
+      }
+    }
+
+    // Handle player attack (apply damage to enemies in arc/range)
+    if (action === 'attack') {
+      const atk = this.player.getAttackData();
+      const normalize = (ang) => {
+        while (ang <= -Math.PI) ang += Math.PI * 2;
+        while (ang > Math.PI) ang -= Math.PI * 2;
+        return ang;
+      };
+      for (const enemy of this.enemies) {
+        if (!enemy.alive) continue;
+        const dx = enemy.x - atk.x; const dy = enemy.y - atk.y;
+        const d = Math.hypot(dx, dy);
+        if (d <= (atk.range + (enemy.w || 16))) {
+          const aToE = Math.atan2(dy, dx);
+          const da = Math.abs(normalize(aToE - atk.angle));
+          if (da <= (atk.arc / 2) || atk.projectile) {
+            const dealt = enemy.takeDamage(atk.damage);
+            if (dealt > 0 && this.particles) this.particles.blood(enemy.x, enemy.y, 6);
+            enemy.knock(this.player.facing.x * 120, this.player.facing.y * 120);
+          }
+        }
+      }
+    }
+
+    // LINKED PROGRESSION LAYER: Show interact prompt on exits and gate progress requirements
     const currentTile = this.world.map.tileAtPx(this.player.x, this.player.y);
-    if (currentTile === 5) { 
-       this.advanceToLayer1();
+    const ip = document.getElementById('interactPrompt');
+    if (currentTile === T.EXIT) {
+      const alive = (this.enemies || []).filter(e => e.alive).length;
+      const initial = this.initialEnemyCount || this.enemies.length;
+      const required = Math.max(0, Math.ceil(initial * 0.9));
+      const allowed = Math.max(0, initial - required);
+      if (alive <= allowed) {
+        if (ip) {
+          ip.classList.remove('hidden');
+          const ia = document.getElementById('interactAction'); if (ia) ia.textContent = 'descend';
+        }
+        this._exitHintShown = false;
+      } else {
+        if (ip) {
+          ip.classList.remove('hidden');
+          const ia = document.getElementById('interactAction'); if (ia) ia.textContent = `defeat ${required}`;
+        }
+        if (!this._exitHintShown) {
+          this._showRoomInfo(`Requires ${required} of ${initial} enemies (90%)`, 3200);
+          this._exitHintShown = true;
+        }
+      }
+    } else {
+      if (ip) ip.classList.add('hidden');
+      this._exitHintShown = false;
     }
     
     this.camera.x += ((this.player.x - this.canvas.width / 2) - this.camera.x) * 0.1;
@@ -268,6 +362,33 @@ class Game {
 
     if (this.settings.particles && this.particles) {
       this.particles.update(dt);
+    }
+
+    // Update enemies and handle their actions
+    if (this.enemies && this.enemies.length) {
+      for (const enemy of this.enemies) {
+        const res = enemy.update(dt, this.player, this.world.map);
+        if (res && res.type === 'attack') {
+          this.player.takeDamage(res.damage);
+        }
+        if (res && res.type === 'groundSlam') {
+          const d = Math.hypot(this.player.x - res.x, this.player.y - res.y);
+          if (d <= (res.radius || 0)) this.player.takeDamage(res.damage || 0);
+        }
+        // Collect souls and spawn particles for dead enemies
+        if (!enemy.alive || enemy.state === 'dead') {
+          if (!enemy._collected) {
+            const souls = enemy.souls || 0;
+            if (souls > 0) {
+              this.player.addSouls(souls);
+              if (this.particles) this.particles.soulPop(enemy.x, enemy.y, Math.min(12, souls * 2));
+            }
+            enemy._collected = true;
+          }
+        }
+      }
+      // remove fully dead enemies from array
+      this.enemies = this.enemies.filter(e => e.alive);
     }
   }
 
@@ -284,13 +405,16 @@ class Game {
     let foundSpawn = false;
     
     const grid = this.world.map.grid;
-    for (let r = 0; r < grid.length; r++) {
-      for (let c = 0; c < grid[r].length; c++) {
-        if (grid[r][c] === 1) { // 1 is your T.FLOOR constant
-          spawnTileX = c;
-          spawnTileY = r;
-          foundSpawn = true;
-          break;
+    for (let r = 1; r < grid.length - 1; r++) {
+      for (let c = 1; c < grid[r].length - 1; c++) {
+        if (grid[r][c] === T.FLOOR) {
+          // prefer tiles with at least one adjacent floor (avoid spawning into tight walls)
+          if (grid[r][c+1] === T.FLOOR || grid[r][c-1] === T.FLOOR || grid[r+1][c] === T.FLOOR || grid[r-1][c] === T.FLOOR) {
+            spawnTileX = c;
+            spawnTileY = r;
+            foundSpawn = true;
+            break;
+          }
         }
       }
       if (foundSpawn) break;
@@ -308,26 +432,40 @@ class Game {
     this.camera.x = this.player.x - this.canvas.width / 2;
     this.camera.y = this.player.y - this.canvas.height / 2;
     
+    // Ensure interact prompt is hidden after layer transition
+    const ip = document.getElementById('interactPrompt');
+    if (ip) ip.classList.add('hidden');
+
+    // Clean stray overlay elements
+    if (typeof this._cleanUiOverlays === 'function') this._cleanUiOverlays();
+
     console.log(`Spawned safely at Tile Column: ${spawnTileX}, Row: ${spawnTileY} (Px: ${this.player.x}, ${this.player.y})`);
   }
 
-  draw(ctx, W, H) {
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#050305'; 
-    ctx.fillRect(0, 0, W, H);
-    
-    if (!this.player || !this.world.map) return;
-    
-    const cx = this.camera.x;
-    const cy = this.camera.y;
-    
-    this.world.map.draw(ctx, cx, cy, W, H);
-    if (this.settings.particles && this.particles) {
-      this.particles.draw(ctx, cx, cy);
-    }
-    this.player.draw(ctx, cx, cy);
-    
-    this._updateHudDOM();
+
+  _cleanUiOverlays() {
+    const removeIfEmpty = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      Array.from(el.children).forEach(ch => {
+        if (!ch.hasChildNodes() && (!ch.textContent || ch.textContent.trim() === '')) ch.remove();
+      });
+    };
+    removeIfEmpty('damageLayer');
+    removeIfEmpty('menuEmbers');
+    removeIfEmpty('damageLayer');
+  }
+
+  _showRoomInfo(text, duration = 2600) {
+    const info = document.getElementById('roomInfo');
+    if (!info) return;
+    info.textContent = text;
+    info.classList.remove('hidden');
+    if (this._roomInfoTimer) clearTimeout(this._roomInfoTimer);
+    this._roomInfoTimer = setTimeout(() => {
+      info.classList.add('hidden');
+      this._roomInfoTimer = null;
+    }, duration);
   }
 
   _updateHudDOM() {

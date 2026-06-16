@@ -414,7 +414,7 @@ export class Enemy {
 }
 
 export const ENEMY_DEFS = {
-  huskWalker: { name: 'Husk Walker', hp: 35, speed: 65, damage: 10, souls: 5, color: '#5a4030', w: 26, h: 26, atkRange: 32, detectRange: 190 },
+  huskWalker: { name: 'Husk Walker', hp: 35, speed: 65, damage: 10, souls: 1, color: '#5a4030', w: 26, h: 26, atkRange: 32, detectRange: 190 },
   lostSoul: { name: 'Lost Soul', hp: 20, speed: 115, damage: 6, souls: 3, color: '#3a2858', w: 22, h: 22, atkRange: 26, detectRange: 220 },
   soulBat: { name: 'Soul Bat', hp: 14, speed: 145, damage: 4, souls: 2, color: '#1a1230', w: 18, h: 18, atkRange: 22, detectRange: 250 },
 };

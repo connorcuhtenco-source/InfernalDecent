@@ -34,6 +34,7 @@ html,body{width:100%;height:100%;background:var(--black);color:var(--white);font
 #screen-game{display:none;align-items:stretch;justify-content:stretch;}
 #screen-game.active{display:flex;}
 .overlay{background:rgba(0,0,0,0.85);z-index:200;}
+.hidden{display:none!important;}
 
 /* ─── EMBERS ─────────────────────────────────────────── */
 .ember-container{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
