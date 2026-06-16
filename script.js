@@ -1,6 +1,6 @@
 'use strict';
 /* ═══════════════════════════════════════════════════════════
-   INFERNAL DESCENT — script.js  (Day 1 complete)
+   INFERNAL DESCENT — script.js
    Classes: Warrior · Assassin · Mage
    Systems: Stamina · Skill Tree · Tutorial Wisp · Soul Levels
 ═══════════════════════════════════════════════════════════ */
@@ -273,7 +273,7 @@ class Player {
     // Scale current values with upgrades
     if (skillId === 'health')  this.hp      += this.maxHp - prevHp;
     if (skillId === 'stamina') this.stamina += this.maxStamina - prevSt;
-    this.hp      = U.clamp(this.hp,      0, this.maxHp);
+    this.hp = U.clamp(this.hp, 0, this.maxHp);
     this.stamina = U.clamp(this.stamina, 0, this.maxStamina);
     return true;
   }
@@ -734,111 +734,147 @@ class Particles{
     for(let i=0;i<n;i++){
       const a=Math.random()*Math.PI*2;
       const sp=U.rand(cfg.sMin||40,cfg.sMax||120);
-      this.add(x,y,{vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,...cfg});
+      this.add(x,y,{
+        vx:Math.cos(a)*sp,
+        vy:Math.sin(a)*sp,
+        life:U.rand(300,700),
+        size:U.rand(1.5,4),
+        color:cfg.color,
+        gravity:cfg.gravity||0
+      });
     }
   }
-  blood(x,y,n=8){this.burst(x,y,n,{color:'#c0392b',size:3,life:450,sMin:50,sMax:130,gravity:220});}
-  soulPop(x,y,n=10){
-    this.burst(x,y,n,{color:'#e67e22',size:2,life:600,sMin:30,sMax:90});
-    this.burst(x,y,4, {color:'#f39c12',size:2,life:800,sMin:15,sMax:50});
-  }
-  slash(x,y,angle,range){
-    for(let i=0;i<7;i++){
-      const a=angle+U.rand(-0.5,0.5);const r=U.rand(0,range);
-      this.add(x+Math.cos(a)*r,y+Math.sin(a)*r,{vx:Math.cos(a)*25,vy:Math.sin(a)*25,color:'#e67e22',size:2,life:180});
-    }
-  }
-  slam(x,y,r){
-    this.burst(x,y,22,{color:'#c0392b',size:4,life:550,sMin:r*0.3,sMax:r*0.85,gravity:280});
-    this.burst(x,y,10,{color:'#8B4513',size:3,life:350,sMin:15,sMax:55,gravity:380});
-  }
-  magic(x,y,n=10){this.burst(x,y,n,{color:'#9b59b6',size:3,life:500,sMin:40,sMax:100});}
   update(dt){this.list=this.list.filter(p=>p.update(dt));}
-  draw(ctx,cx,cy){ctx.save();for(const p of this.list)p.draw(ctx,cx,cy);ctx.globalAlpha=1;ctx.restore();}
+  draw(ctx,cx,cy){for(const p of this.list)p.draw(ctx,cx,cy);}
 }
 
 /* ──────────────────────────────────────────────────────────
-   TILE MAP
+   CAMERA
 ────────────────────────────────────────────────────────── */
-class TileMap{
-  constructor(grid,colors){
-    this.grid=grid;this.rows=grid.length;this.cols=grid[0].length;
-    this.colors={floor:'#140e0e',wall:'#0a0606',accent:'#2a1a14',...colors};
-    this.width=this.cols*TILE;this.height=this.rows*TILE;
+class Camera {
+  constructor(){this.x=0;this.y=0;}
+  follow(px,py,sw,sh,mw,mh){
+    this.x=U.clamp(px-sw/2,0,mw-sw);
+    this.y=U.clamp(py-sh/2,0,mh-sh);
   }
-  at(c,r){if(r<0||r>=this.rows||c<0||c>=this.cols)return T.WALL;return this.grid[r][c];}
-  walkable(c,r){const t=this.at(c,r);return t===T.FLOOR||t===T.DOOR||t===T.CHECKPOINT||t===T.EXIT;}
-  collidesAt(cx,cy,w,h){
-    const p=2,x1=cx-w/2+p,y1=cy-h/2+p,x2=cx+w/2-p,y2=cy+h/2-p;
-    for(let r=Math.floor(y1/TILE);r<=Math.floor(y2/TILE);r++)
-      for(let c=Math.floor(x1/TILE);c<=Math.floor(x2/TILE);c++)
-        if(!this.walkable(c,r))return true;
+}
+
+/* ──────────────────────────────────────────────────────────
+   TILEMAP & WORLD
+────────────────────────────────────────────────────────── */
+class TileMap {
+  constructor(grid,colors){
+    this.grid=grid;
+    this.h=grid.length;
+    this.w=grid[0]?grid[0].length:0;
+    this.colors=colors;
+  }
+  get pixelW(){return this.w*TILE;}
+  get pixelH(){return this.h*TILE;}
+
+  getTileAt(px,py){
+    const tx=Math.floor(px/TILE),ty=Math.floor(py/TILE);
+    if(tx<0||tx>=this.w||ty<0||ty>=this.h)return T.VOID;
+    return this.grid[ty][tx];
+  }
+  setTileAt(px,py,val){
+    const tx=Math.floor(px/TILE),ty=Math.floor(py/TILE);
+    if(tx>=0&&tx<this.w&&ty>=0&&ty<this.h)this.grid[ty][tx]=val;
+  }
+  draw(ctx,cx,cy,sw,sh){
+    const x0=Math.max(0,Math.floor(cx/TILE)),x1=Math.min(this.w,Math.ceil((cx+sw)/TILE));
+    const y0=Math.max(0,Math.floor(cy/TILE)),y1=Math.min(this.h,Math.ceil((cy+sh)/TILE));
+    for(let y=y0;y<y1;y++){
+      for(let x=x0;x<x1;x++){
+        const t=this.grid[y][x];
+        if(t===T.VOID)continue;
+        const sx=x*TILE-cx,sy=y*TILE-cy;
+        if(t===T.FLOOR)ctx.fillStyle=this.colors.floor;
+        else if(t===T.WALL)ctx.fillStyle=this.colors.wall;
+        else if(t===T.DOOR)ctx.fillStyle='#7e57c2';
+        else if(t===T.CHECKPOINT)ctx.fillStyle=this.colors.accent;
+        else if(t===T.EXIT)ctx.fillStyle='#27ae60';
+        ctx.fillRect(sx,sy,TILE,TILE);
+        if(t===T.WALL){
+          ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+          ctx.strokeRect(sx,sy,TILE,TILE);
+        }
+      }
+    }
+  }
+}
+
+class World {
+  constructor(){
+    this.map=null;
+    this.enemies=[];
+    this.boss=null;
+    this.isBossArena=false;
+    this.checkpointReached=false;
+  }
+  get width(){return this.map?this.map.pixelW:0;}
+  get height(){return this.map?this.map.pixelH:0;}
+
+  collidesAt(px,py,w,h){
+    if(!this.map)return true;
+    const l=px-w/2,r=px+w/2,t=py-h/2,b=py+h/2;
+    const points=[{x:l,y:t},{x:r,y:t},{x:l,y:b},{x:r,y:b},{x:px,y:t},{x:px,y:b},{x:l,y:py},{x:r,y:py}];
+    for(const p of points){
+      const tile=this.map.getTileAt(p.x,p.y);
+      if(tile===T.WALL||tile===T.VOID||tile===T.DOOR)return true;
+    }
     return false;
   }
-  tileAtPx(wx,wy){return this.at(Math.floor(wx/TILE),Math.floor(wy/TILE));}
 
-  draw(ctx,cx,cy,vw,vh){
-    const c0=Math.max(0,Math.floor(cx/TILE));
-    const r0=Math.max(0,Math.floor(cy/TILE));
-    const c1=Math.min(this.cols,Math.ceil((cx+vw)/TILE));
-    const r1=Math.min(this.rows,Math.ceil((cy+vh)/TILE));
-    for(let r=r0;r<r1;r++)for(let c=c0;c<c1;c++)
-      this._tile(ctx,this.grid[r][c],c*TILE-cx,r*TILE-cy);
+  loadTutorial(){
+    this.isBossArena=false;this.boss=null;this.checkpointReached=false;
+    this.map=makeTutorialMap();
+    this.enemies=[new TutorialBoss(12*TILE+TILE/2,7*TILE+TILE/2)];
   }
-  _tile(ctx,t,x,y){
-    switch(t){
-      case T.FLOOR:
-        ctx.fillStyle=this.colors.floor;ctx.fillRect(x,y,TILE,TILE);
-        ctx.strokeStyle=this.colors.accent;ctx.lineWidth=0.5;ctx.strokeRect(x,y,TILE,TILE);
-        break;
-      case T.WALL:
-        ctx.fillStyle=this.colors.wall;ctx.fillRect(x,y,TILE,TILE);
-        ctx.fillStyle='rgba(255,255,255,0.03)';ctx.fillRect(x,y,TILE,2);
-        ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fillRect(x+TILE-4,y,4,TILE);ctx.fillRect(x,y+TILE-4,TILE,4);
-        break;
-      case T.DOOR:
-        ctx.fillStyle='#2a1408';ctx.fillRect(x,y,TILE,TILE);
-        ctx.fillStyle='#5a2e10';ctx.fillRect(x+8,y+4,TILE-16,TILE-8);
-        ctx.fillStyle='#e67e22';ctx.beginPath();ctx.arc(x+TILE/2,y+TILE/2,4,0,Math.PI*2);ctx.fill();
-        break;
-      case T.CHECKPOINT:
-        ctx.fillStyle=this.colors.floor;ctx.fillRect(x,y,TILE,TILE);
-        ctx.fillStyle='rgba(230,126,34,0.18)';ctx.fillRect(x,y,TILE,TILE);
-        ctx.strokeStyle='#e67e22';ctx.lineWidth=1;ctx.strokeRect(x+4,y+4,TILE-8,TILE-8);
-        ctx.font='18px serif';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillStyle='#e67e22';ctx.fillText('⚜',x+TILE/2,y+TILE/2);
-        break;
-      case T.EXIT:
-        ctx.fillStyle='#100808';ctx.fillRect(x,y,TILE,TILE);
-        ctx.strokeStyle='#c0392b';ctx.lineWidth=2;ctx.strokeRect(x+2,y+2,TILE-4,TILE-4);
-        ctx.font='20px serif';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillStyle='#c0392b';ctx.fillText('🚪',x+TILE/2,y+TILE/2);
-        break;
-      default:
-        ctx.fillStyle='#050305';ctx.fillRect(x,y,TILE,TILE);
+  loadLayer1(){
+    this.isBossArena=false;this.boss=null;this.checkpointReached=false;
+    this.map=makeLayer1Map();
+    this.enemies=[
+      new Enemy(10*TILE,3*TILE,ENEMY_DEFS.huskWalker),
+      new Enemy(16*TILE,2*TILE,ENEMY_DEFS.lostSoul),
+      new Enemy(23*TILE,4*TILE,ENEMY_DEFS.soulBat),
+      new Enemy(8*TILE,11*TILE,ENEMY_DEFS.huskWalker),
+      new Enemy(12*TILE,14*TILE,ENEMY_DEFS.lostSoul),
+      new Enemy(20*TILE,12*TILE,ENEMY_DEFS.soulBat),
+    ];
+  }
+  loadBossArena(){
+    this.isBossArena=true;this.enemies=[];this.checkpointReached=false;
+    this.map=makeBossArena();
+    this.boss=new Gatekeeper(10*TILE,6*TILE);
+  }
+  get bossDefeated(){return this.boss&&!this.boss.alive;}
+
+  openDoors(){
+    if(!this.map)return;
+    for(let y=0;y<this.map.h;y++){
+      for(let x=0;x<this.map.w;x++){
+        if(this.map.grid[y][x]===T.DOOR)this.map.grid[y][x]=T.FLOOR;
+      }
     }
   }
 }
 
-/* ──────────────────────────────────────────────────────────
-   MAPS
-────────────────────────────────────────────────────────── */
 function makeTutorialMap(){
   const g=[
     [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+    [2,1,1,1,2,2,1,1,1,1,1,1,2,2,1,1,1,1,1,2],
+    [2,1,1,1,2,2,1,1,1,1,1,1,2,2,1,1,1,1,1,2],
+    [2,1,1,1,3,3,1,1,1,1,1,1,3,3,1,1,1,1,1,2],
+    [2,1,1,1,2,2,1,1,1,1,1,1,2,2,1,1,1,1,1,2],
+    [2,2,2,1,2,2,2,2,2,1,2,2,2,2,2,2,1,2,2,2],
     [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
     [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,1,2,2,2,1,1,1,1,1,1,1,1,2,2,2,1,1,2],
-    [2,1,1,2,2,2,1,1,1,1,1,1,1,1,2,2,2,1,1,2],
-    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,1,2,2,1,1,1,1,1,1,1,1,1,2,2,1,1,1,2],
-    [2,1,1,2,2,1,1,1,1,1,1,1,1,1,2,2,1,1,1,2],
-    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,5,1,2],
+    [2,2,2,1,2,2,2,2,2,1,2,2,2,2,2,2,1,2,2,2],
+    [2,1,1,1,2,2,1,1,1,1,1,1,2,2,1,1,1,1,1,2],
+    [2,1,1,1,3,3,1,1,1,1,1,1,3,3,1,1,4,1,1,2],
+    [2,1,1,1,2,2,1,1,1,1,1,1,2,2,1,1,1,1,1,2],
+    [2,1,1,1,2,2,1,1,1,1,1,1,2,2,1,1,1,1,5,2],
     [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
   ];
   return new TileMap(g,{floor:'#100c0c',wall:'#080505',accent:'#1e1010'});
@@ -877,253 +913,91 @@ function makeBossArena(){
     [2,1,1,2,2,1,1,1,1,1,1,1,1,1,1,2,2,1,1,2],
     [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
     [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
     [2,1,1,2,2,1,1,1,1,1,1,1,1,1,1,2,2,1,1,2],
     [2,1,1,2,2,1,1,1,1,1,1,1,1,1,1,2,2,1,1,2],
     [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
     [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,5,1,2],
+    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
     [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
   ];
-  return new TileMap(g,{floor:'#120a0a',wall:'#080404',accent:'#221010'});
+  return new TileMap(g,{floor:'#1c0c0c',wall:'#0e0505',accent:'#3a1010'});
 }
 
 /* ──────────────────────────────────────────────────────────
-   WORLD
+   USER INTERFACE / HUD MANAGER
 ────────────────────────────────────────────────────────── */
-class World{
+class UI {
   constructor(){
-    this.map=null;this.enemies=[];this.boss=null;
-    this.bossDefeated=false;this.cleared=false;
-    this.isBossArena=false;
-  }
-  loadTutorial(){
-    this.map=makeTutorialMap();this.enemies=[];this.boss=null;
-    this.isBossArena=false;this.cleared=false;
-    this.boss=new TutorialBoss(19/2*TILE+TILE/2, 2*TILE+TILE/2);
-  }
-  loadLayer1(){
-    this.map=makeLayer1Map();this.enemies=[];this.boss=null;
-    this.isBossArena=false;this.cleared=false;this.bossDefeated=false;
-    const pos=[
-      {x:2,y:2},{x:3,y:3},{x:4,y:2},
-      {x:8,y:2},{x:9,y:3},{x:10,y:2},
-      {x:15,y:3},{x:16,y:4},
-      {x:5,y:7},{x:10,y:8},{x:16,y:7},{x:22,y:8},
-      {x:2,y:13},{x:3,y:14},{x:8,y:13},{x:16,y:13},{x:22,y:13},
-    ];
-    const types=['huskWalker','lostSoul','soulBat'];
-    for(const p of pos)
-      this.enemies.push(new Enemy(p.x*TILE+TILE/2,p.y*TILE+TILE/2,ENEMY_DEFS[U.choice(types)]));
-  }
-  loadBossArena(){
-    this.map=makeBossArena();this.enemies=[];
-    this.isBossArena=true;this.cleared=false;this.bossDefeated=false;
-    this.boss=new Gatekeeper(10*TILE+TILE/2, 3*TILE+TILE/2);
-  }
-  collidesAt(x,y,w,h){return this.map?this.map.collidesAt(x,y,w,h):false;}
-  tileAtPx(wx,wy){return this.map?this.map.tileAtPx(wx,wy):T.WALL;}
-
-  update(dt,player,particles){
-    const results=[];
-    /* Enemies */
-    for(const e of this.enemies){
-      const r=e.update(dt,player,this);
-      if(r?.type==='attack'){
-        if(U.dist(e.x,e.y,player.x,player.y)<e.atkRange+10){
-          const taken=player.takeDamage(r.damage);
-          if(taken>0)particles.blood(player.x,player.y,5);
-        }
-      }
-    }
-    /* Boss */
-    if(this.boss&&this.boss.alive){
-      const r=this.boss.update(dt,player,this);
-      if(r?.type==='attack'){
-        if(U.dist(this.boss.x,this.boss.y,player.x,player.y)<this.boss.atkRange+12){
-          const taken=player.takeDamage(r.damage);
-          if(taken>0)particles.blood(player.x,player.y,8);
-        }
-      }
-      if(r?.type==='groundSlam'){
-        particles.slam(r.x,r.y,r.radius);
-        if(U.dist(player.x,player.y,r.x,r.y)<r.radius){
-          const taken=player.takeDamage(r.damage);
-          if(taken>0)particles.blood(player.x,player.y,10);
-        }
-        results.push({type:'screenShake'});
-      }
-    }
-    /* Dead enemies */
-    const dead=this.enemies.filter(e=>!e.alive);
-    for(const e of dead){
-      particles.soulPop(e.x,e.y,10);
-      const leveled=player.addSouls(e.souls);
-      player.killCount++;
-      if(leveled)results.push({type:'levelUp'});
-    }
-    this.enemies=this.enemies.filter(e=>e.alive);
-    /* Dead boss */
-    if(this.boss&&!this.boss.alive&&!this.bossDefeated){
-      this.bossDefeated=true;
-      particles.soulPop(this.boss.x,this.boss.y,30);
-      const leveled=player.addSouls(this.boss.souls);
-      player.killCount++;
-      if(leveled)results.push({type:'levelUp'});
-      results.push({type:'bossDefeated',bossName:this.boss.name});
-    }
-    /* Projectile hits */
-    for(const p of player.projectiles){
-      if(!p.alive)continue;
-      const targets=[...this.enemies,...(this.boss&&this.boss.alive?[this.boss]:[])];
-      for(const e of targets){
-        if(U.dist(p.x,p.y,e.x,e.y)<e.w/2+p.r){
-          const dmg=e.takeDamage(p.damage);
-          if(dmg>0)particles.magic(p.x,p.y,6);
-          p.alive=false;
-          results.push({type:'dmgNumber',x:e.x,y:e.y,amount:dmg,kind:'dmg-magic'});
-          break;
-        }
-      }
-    }
-    /* Cleared */
-    if(!this.cleared&&this.enemies.length===0&&(!this.boss||this.bossDefeated))this.cleared=true;
-    return results;
-  }
-
-  draw(ctx,cx,cy,vw,vh){
-    this.map.draw(ctx,cx,cy,vw,vh);
-    for(const e of this.enemies)e.draw(ctx,cx,cy);
-    if(this.boss)this.boss.draw(ctx,cx,cy);
-  }
-}
-
-/* ──────────────────────────────────────────────────────────
-   CAMERA
-────────────────────────────────────────────────────────── */
-class Camera{
-  constructor(){this.x=0;this.y=0;}
-  follow(tx,ty,mw,mh,vw,vh){
-    this.x=U.clamp(tx-vw/2,0,Math.max(0,mw-vw));
-    this.y=U.clamp(ty-vh/2,0,Math.max(0,mh-vh));
-  }
-}
-
-/* ──────────────────────────────────────────────────────────
-   UI MANAGER
-────────────────────────────────────────────────────────── */
-class UI{
-  constructor(){
-    this.hpBar   =document.getElementById('hpBar');
-    this.hpText  =document.getElementById('hpText');
-    this.stBar   =document.getElementById('stBar');
-    this.stText  =document.getElementById('stText');
-    this.hudSouls=document.getElementById('hudSouls');
-    this.hudLevel=document.getElementById('hudLevel');
-    this.hudXpBar=document.getElementById('hudXpBar');
-    this.hudWeapon=document.getElementById('hudWeapon');
-    this.hudClass=document.getElementById('hudClass');
-    this.layerRoman=document.getElementById('hudLayerRoman');
-    this.layerName =document.getElementById('hudLayerName');
-    this.atkCdEl   =document.getElementById('atkCd');
-    this.dashCdEl  =document.getElementById('dashCd');
-    this.specialCdEl=document.getElementById('specialCd');
-    this.blockCdEl =document.getElementById('blockCd');
-    this.slotAtk   =document.getElementById('slotAttack');
-    this.slotDash  =document.getElementById('slotDash');
-    this.slotSpec  =document.getElementById('slotSpecial');
-    this.bossHud   =document.getElementById('bossHud');
-    this.bossBar   =document.getElementById('bossBar');
-    this.bossNameEl=document.getElementById('bossName');
-    this.bossPhaseEl=document.getElementById('bossPhase');
+    this.hpBar=document.getElementById('hpBar');
+    this.staminaBar=document.getElementById('staminaBar');
+    this.soulCount=document.getElementById('soulCount');
+    this.levelDisplay=document.getElementById('levelDisplay');
+    this.roomInfo=document.getElementById('roomInfo');
     this.interactPrompt=document.getElementById('interactPrompt');
     this.interactAction=document.getElementById('interactAction');
-    this.roomInfo  =document.getElementById('roomInfo');
-    this.dmgLayer  =document.getElementById('damageLayer');
+    this.wispDlg=document.getElementById('wispDialogue');
+    this.wispText=document.getElementById('wispText');
+    this.layerRoman=document.getElementById('layerRoman');
+    this.layerName=document.getElementById('layerName');
+    this.bossHud=document.getElementById('bossHud');
+    this.bossBar=document.getElementById('bossBar');
+    this.bossPhase=document.getElementById('bossPhase');
     this.gameScreen=document.getElementById('screen-game');
-    this.wispDlg   =document.getElementById('wispDialogue');
-    this.wispText  =document.getElementById('wispText');
-    this._roomTimer=null;
+    this.dmgLayer=document.getElementById('damageNumbersLayer');
   }
 
   update(player,world){
-    /* HP */
-    const hpPct=player.hp/player.maxHp;
-    this.hpBar.style.width=(hpPct*100)+'%';
-    this.hpText.textContent=`${Math.ceil(player.hp)}/${player.maxHp}`;
-    this.gameScreen.classList.toggle('low-hp',hpPct<0.25);
-    /* Stamina */
-    const stPct=player.stamina/player.maxStamina;
-    this.stBar.style.width=(stPct*100)+'%';
-    this.stText.textContent=`${Math.floor(player.stamina)}/${player.maxStamina}`;
-    /* Souls / Level */
-    this.hudSouls.textContent=player.souls;
-    this.hudLevel.textContent=player.level;
-    const xpPct=player.soulsAccum/SOULS_PER_LEVEL;
-    this.hudXpBar.style.width=(xpPct*100)+'%';
-    /* Weapon */
-    this.hudWeapon.textContent=player.weapon.name;
-    this.hudClass.textContent=player.className.toUpperCase();
-    /* Cooldowns */
-    const fmtCd=ms=>ms>0?(ms/1000).toFixed(1)+'s':'';
-    this.atkCdEl.textContent=fmtCd(Math.max(0,player.atkCd));
-    this.dashCdEl.textContent=fmtCd(Math.max(0,player.dashCd));
-    this.specialCdEl.textContent=fmtCd(Math.max(0,player.specialCd));
-    this.slotAtk.classList.toggle('cooling',player.atkCd>0);
-    this.slotDash.classList.toggle('cooling',player.dashCd>0);
-    this.slotSpec.classList.toggle('cooling',player.specialCd>0);
-    /* Boss HUD */
-    if(world.boss&&world.boss.alive){
+    this.hpBar.style.width=`${(player.hp/player.maxHp)*100}%`;
+    this.staminaBar.style.width=`${(player.stamina/player.maxStamina)*100}%`;
+    this.soulCount.textContent=player.souls;
+    this.levelDisplay.textContent=player.level;
+
+    /* CD labels */
+    document.getElementById('dashCd').textContent=player.dashCd>0?Math.ceil(player.dashCd/1000):'';
+    document.getElementById('specialCd').textContent=player.specialCd>0?Math.ceil(player.specialCd/1000):'';
+
+    const tile=world.map?world.map.getTileAt(player.x,player.y):T.VOID;
+    if(tile===T.CHECKPOINT && !world.checkpointReached){
+      this.showInteract('rest at checkpoint');
+    } else if(tile===T.EXIT){
+      this.showInteract(world.isBossArena?'escape inferno':'descend deeper');
+    } else {
+      this.hideInteract();
+    }
+
+    if(world.isBossArena && world.boss && world.boss.alive){
       this.bossHud.classList.remove('hidden');
-      this.bossNameEl.textContent=world.boss.name;
-      this.bossBar.style.width=(world.boss.hp/world.boss.maxHp*100)+'%';
-      this.bossPhaseEl.textContent=world.boss.phaseName||'Phase I';
+      this.bossBar.style.width=`${(world.boss.hp/world.boss.maxHp)*100}%`;
+      this.bossPhase.textContent=world.boss.phaseName;
     } else {
       this.bossHud.classList.add('hidden');
     }
   }
 
-  showInteract(action){
-    this.interactAction.textContent=action;
-    this.interactPrompt.classList.remove('hidden');
+  showRoomInfo(txt,duration=3000){
+    this.roomInfo.textContent=txt;this.roomInfo.classList.remove('hidden');
+    if(this._riTimeout)clearTimeout(this._riTimeout);
+    this._riTimeout=setTimeout(()=>this.roomInfo.classList.add('hidden'),duration);
   }
+  showInteract(act){this.interactAction.textContent=act;this.interactPrompt.classList.remove('hidden');}
   hideInteract(){this.interactPrompt.classList.add('hidden');}
 
-  showRoomInfo(txt,dur=2600){
-    this.roomInfo.textContent=txt;
-    this.roomInfo.classList.remove('hidden');
-    clearTimeout(this._roomTimer);
-    this._roomTimer=setTimeout(()=>this.roomInfo.classList.add('hidden'),dur);
-  }
-
-  shake(){
+  screenShake(){
     this.gameScreen.classList.remove('shaking');
     void this.gameScreen.offsetWidth;
     this.gameScreen.classList.add('shaking');
     setTimeout(()=>this.gameScreen.classList.remove('shaking'),400);
   }
-
   dmgNumber(x,y,amount,kind,cx,cy){
     const el=document.createElement('div');
     el.className=`dmg-num ${kind}`;
     el.textContent=kind==='dmg-soul'?`+${amount}💀`:kind==='dmg-crit'?`${amount}!!`:amount;
-    el.style.left=(x-cx)+'px';
-    el.style.top=(y-cy-18)+'px';
+    el.style.left=(x-cx)+'px';el.style.top=(y-cy-18)+'px';
     this.dmgLayer.appendChild(el);
     el.addEventListener('animationend',()=>el.remove());
   }
-
-  setLayer(roman,name){
-    this.layerRoman.textContent=roman;
-    this.layerName.textContent=name;
-  }
-
-  showWisp(text){
-    this.wispText.textContent=text;
-    this.wispDlg.classList.remove('hidden');
-  }
+  setLayer(roman,name){this.layerRoman.textContent=roman;this.layerName.textContent=name;}
+  showWisp(text){this.wispText.textContent=text;this.wispDlg.classList.remove('hidden');}
   hideWisp(){this.wispDlg.classList.add('hidden');}
 
   buildSkillTree(player,onUpgrade){
@@ -1155,7 +1029,6 @@ class UI{
       grid.appendChild(card);
     }
   }
-
   showDeathScreen(cause,player){
     document.getElementById('deathCause').textContent=cause;
     document.getElementById('gameoverStats').innerHTML=
@@ -1173,10 +1046,7 @@ class UI{
    SCREEN MANAGER
 ────────────────────────────────────────────────────────── */
 class Screens{
-  constructor(){
-    this.all=document.querySelectorAll('.screen');
-    this.current=null;
-  }
+  constructor(){this.all=document.querySelectorAll('.screen');this.current=null;}
   show(id){
     this.all.forEach(s=>{
       if(s.id===id){s.classList.remove('hidden');s.classList.add('active');}
@@ -1184,18 +1054,12 @@ class Screens{
     });
     this.current=id;
   }
-  showOverlay(id){
-    const el=document.getElementById(id);
-    if(el){el.classList.remove('hidden');el.classList.add('active');}
-  }
-  hideOverlay(id){
-    const el=document.getElementById(id);
-    if(el){el.classList.add('hidden');el.classList.remove('active');}
-  }
+  showOverlay(id){const el=document.getElementById(id);if(el){el.classList.remove('hidden');el.classList.add('active');}}
+  hideOverlay(id){const el=document.getElementById(id);if(el){el.classList.add('hidden');el.classList.remove('active');}}
 }
 
 /* ──────────────────────────────────────────────────────────
-   TUTORIAL WISP CONTROLLER
+   TUTORIAL WISP CONTROLLER (FIXED)
 ────────────────────────────────────────────────────────── */
 class WispTutorial{
   constructor(ui,onDone){
@@ -1211,7 +1075,13 @@ class WispTutorial{
       "A hollow guardian stands before the gate. Defeat it to begin your descent.",
       "Good luck. You will need it."
     ];
-    document.getElementById('wispNext').addEventListener('click',()=>this.next());
+    
+    /* FIX: Reclone the button node to completely wipe stale event listeners on reset/new game instances */
+    const oldBtn = document.getElementById('wispNext');
+    const newBtn = oldBtn.cloneNode(true);
+    oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+
+    newBtn.addEventListener('click',()=>this.next());
     this.ui.showWisp(this.lines[0]);
   }
   next(){
@@ -1223,73 +1093,37 @@ class WispTutorial{
 }
 
 /* ──────────────────────────────────────────────────────────
-   SETTINGS MANAGER
+   CORE ENGINE GAME LOOP
 ────────────────────────────────────────────────────────── */
-class Settings{
+class Game {
   constructor(){
-    this.brightness=100;this.volume=80;this.sfx=80;
-    this.screenShake=true;this.particles=true;
-    this._wire();
-  }
-  _wire(){
-    const bSlider=document.getElementById('settingBrightness');
-    const bVal   =document.getElementById('brightnessVal');
-    bSlider?.addEventListener('input',()=>{
-      this.brightness=+bSlider.value;
-      bVal.textContent=this.brightness+'%';
-      const ol=document.getElementById('brightnessOverlay');
-      if(ol){
-        if(this.brightness<100)ol.style.background=`rgba(0,0,0,${(100-this.brightness)/100*0.6})`;
-        else if(this.brightness>100)ol.style.background=`rgba(255,200,100,${(this.brightness-100)/100*0.3})`;
-        else ol.style.background='transparent';
-      }
-    });
-    document.getElementById('settingVolume')?.addEventListener('input',e=>{
-      this.volume=+e.target.value;
-      document.getElementById('volumeVal').textContent=this.volume+'%';
-    });
-    document.getElementById('settingSFX')?.addEventListener('input',e=>{
-      this.sfx=+e.target.value;
-      document.getElementById('sfxVal').textContent=this.sfx+'%';
-    });
-    document.getElementById('toggleShake')?.addEventListener('click',e=>{
-      this.screenShake=!this.screenShake;
-      e.target.textContent=this.screenShake?'ON':'OFF';
-      e.target.classList.toggle('active',this.screenShake);
-    });
-    document.getElementById('toggleParticles')?.addEventListener('click',e=>{
-      this.particles=!this.particles;
-      e.target.textContent=this.particles?'ON':'OFF';
-      e.target.classList.toggle('active',this.particles);
-    });
-  }
-}
-
-/* ──────────────────────────────────────────────────────────
-   MAIN GAME
-────────────────────────────────────────────────────────── */
-class Game{
-  constructor(){
-    this.canvas =document.getElementById('gameCanvas');
-    this.ctx    =this.canvas.getContext('2d');
-    this.input  =new Input();
+    this.canvas=document.getElementById('gameCanvas');
+    this.ctx=this.canvas.getContext('2d');
+    this.input=new Input();
+    this.ui=new UI();
     this.screens=new Screens();
-    this.ui     =new UI();
-    this.settings=new Settings();
-    this.particles=new Particles();
-    this.world  =new World();
-    this.camera =new Camera();
-    this.player =null;
-    this.state  ='menu'; // menu|tutorial|playing|paused|skilltree|gameover|victory
-    this.selectedClass=null;
+
+    this.state='menu';
+    this.player=null;
+    this.world=null;
+    this.particles=null;
+    this.camera=null;
     this.tutorialWisp=null;
-    this.tutorialDone=false;
+
+    this._lastT=0;
     this._victoryFlag=false;
-    this._lastTime=0;
+    this.selectedClass='warrior';
+    this.tutorialDone=false;
 
     this._wireButtons();
     this._wireResize();
     this._resize();
+
+    /* Init particles loop for menu */
+    spawnEmbers();
+    setInterval(spawnEmbers,2500);
+
+    /* Start loop */
     requestAnimationFrame(t=>this._loop(t));
   }
 
@@ -1301,22 +1135,28 @@ class Game{
     document.getElementById('btnMenuHowTo').addEventListener('click',()=>this.screens.show('screen-howto'));
     document.getElementById('btnMenuSettings').addEventListener('click',()=>this.screens.show('screen-settings'));
     document.getElementById('btnMenuCredits').addEventListener('click',()=>this.screens.show('screen-credits'));
+
     /* Back buttons */
     ['btnStoryBack','btnHowToBack','btnSettingsBack','btnCreditsBack']
       .forEach(id=>document.getElementById(id)?.addEventListener('click',()=>this.screens.show('screen-menu')));
+
     /* Class select */
     document.querySelectorAll('.class-select-btn').forEach(btn=>{
       btn.addEventListener('click',()=>this._startGame(btn.dataset.class));
     });
+
     /* Pause */
     document.getElementById('btnResume').addEventListener('click',()=>this._resume());
     document.getElementById('btnPauseRestart').addEventListener('click',()=>{this.screens.hideOverlay('screen-pause');this._startGame(this.selectedClass);});
     document.getElementById('btnPauseMenu').addEventListener('click',()=>{this.screens.hideOverlay('screen-pause');this.screens.show('screen-menu');this.state='menu';});
+
     /* Skill tree */
     document.getElementById('btnSkillTreeClose').addEventListener('click',()=>this._closeSkillTree());
+
     /* Game over */
     document.getElementById('btnGORestart').addEventListener('click',()=>{this.screens.hideOverlay('screen-gameover');this._startGame(this.selectedClass);});
     document.getElementById('btnGOMenu').addEventListener('click',()=>{this.screens.hideOverlay('screen-gameover');this.screens.show('screen-menu');});
+
     /* Victory */
     document.getElementById('btnVictoryPlay').addEventListener('click',()=>{this.screens.hideOverlay('screen-victory');this._startGame(this.selectedClass);});
     document.getElementById('btnVictoryMenu').addEventListener('click',()=>{this.screens.hideOverlay('screen-victory');this.screens.show('screen-menu');});
@@ -1333,6 +1173,7 @@ class Game{
     this.screens.hideOverlay('screen-skilltree');
     this.screens.show('screen-game');
     this.selectedClass=classId;
+
     this.player=new Player(2*TILE+TILE/2, 7*TILE+TILE/2, classId);
     this.world=new World();
     this.particles=new Particles();
@@ -1342,8 +1183,7 @@ class Game{
 
     /* Start in tutorial */
     this.world.loadTutorial();
-    this.player.x=3*TILE+TILE/2;
-    this.player.y=12*TILE+TILE/2;
+    this.player.x=3*TILE+TILE/2;this.player.y=12*TILE+TILE/2;
     this.ui.setLayer('T','Tutorial — Hollow Gate');
     this.state='tutorial';
 
@@ -1358,8 +1198,7 @@ class Game{
   _enterLayer1(){
     const wn=this.player.upgradeWeapon();
     this.world.loadLayer1();
-    this.player.x=3*TILE+TILE/2;
-    this.player.y=3*TILE+TILE/2;
+    this.player.x=3*TILE+TILE/2;this.player.y=3*TILE+TILE/2;
     this.ui.setLayer('I','Gates of Despair');
     this.ui.showRoomInfo('Layer I — Gates of Despair',3500);
     if(wn)setTimeout(()=>this.ui.showRoomInfo(`Weapon acquired: ${wn}`,2500),3600);
@@ -1370,236 +1209,174 @@ class Game{
   /* ── Boss arena ── */
   _enterBossArena(){
     this.world.loadBossArena();
-    this.player.x=10*TILE+TILE/2;
-    this.player.y=13*TILE+TILE/2;
-    this.ui.showRoomInfo('⚠ THE GATEKEEPER AWAKENS ⚠',4000);
-    if(this.settings.screenShake)this.ui.shake();
-  }
-
-  /* ── Pause / Resume ── */
-  _pause(){if(this.state!=='playing'&&this.state!=='tutorial')return;this._prevState=this.state;this.state='paused';this.screens.showOverlay('screen-pause');}
-  _resume(){this.state=this._prevState||'playing';this.screens.hideOverlay('screen-pause');}
-
-  /* ── Skill Tree ── */
-  _openSkillTree(){
-    this.state='skilltree';
-    this.screens.showOverlay('screen-skilltree');
-    this.ui.buildSkillTree(this.player,()=>this.ui.buildSkillTree(this.player,()=>{}));
-  }
-  _closeSkillTree(){
-    this.screens.hideOverlay('screen-skilltree');
+    this.player.x=10*TILE;this.player.y=10*TILE;
+    this.ui.setLayer('B','The Gatekeeper Arena');
+    this.ui.showRoomInfo('WARNING: The Gatekeeper Appears!',4000);
     this.state='playing';
-    /* After skill tree from boss checkpoint — load boss */
-    if(!this.world.isBossArena&&this.world.enemies.length===0){
-      this._enterBossArena();
-    }
   }
 
-  /* ── Game over / Victory ── */
-  _die(cause){
-    this.state='gameover';
-    this.ui.showDeathScreen(cause,this.player);
-    this.screens.showOverlay('screen-gameover');
+  /* ── Rest / Checkpoint ── */
+  _restAtCheckpoint(){
+    this.world.checkpointReached=true;
+    this.player.heal(this.player.maxHp);
+    this.player.stamina=this.player.maxStamina;
+    this.screens.showOverlay('screen-skilltree');
+    this.ui.buildSkillTree(this.player,()=>this.ui.buildSkillTree(this.player,()=>this._closeSkillTree()));
+    this.state='paused';
   }
-  _victory(){
-    this.state='victory';
-    this.ui.showVictoryScreen(this.player);
-    this.screens.showOverlay('screen-victory');
-  }
+  _closeSkillTree(){this.screens.hideOverlay('screen-skilltree');this.state='playing';}
 
-  /* ── Loop ── */
-  _loop(ts){
-    const dt=Math.min(ts-this._lastTime,50);
-    this._lastTime=ts;
-    if(this.state==='playing'||this.state==='tutorial')this._update(dt);
+  /* ── Game loops ── */
+  _resume(){this.screens.hideOverlay('screen-pause');this.state=this.tutorialDone?'playing':'tutorial';}
+  _pause(){this.screens.showOverlay('screen-pause');this.state='paused';}
+  _gameover(cause){this.screens.showOverlay('screen-gameover');this.ui.showDeathScreen(cause,this.player);this.state='paused';}
+  _victory(){this.screens.showOverlay('screen-victory');this.ui.showVictoryScreen(this.player);this.state='paused';}
+
+  _loop(timestamp){
+    if(!this._lastT)this._lastT=timestamp;
+    let dt=timestamp-this._lastT;
+    if(dt>100)dt=100; // Cap lag spikes
+    this._lastT=timestamp;
+
+    this._update(dt);
     this._draw();
     requestAnimationFrame(t=>this._loop(t));
   }
 
-  /* ── Update ── */
   _update(dt){
+    if(this.state==='menu'||this.state==='paused')return;
+
+    /* Core execution rules mapping */
     const action=this.player.update(dt,this.input,this.world);
+    if(action==='pause'){this._pause();return;}
 
-    if(action==='pause'){this._pause();this.input.flush();return;}
-
-    /* Interact */
-    if(action==='interact'){
-      const tile=this.world.tileAtPx(this.player.x,this.player.y);
-      if(tile===T.CHECKPOINT&&this.world.enemies.length===0&&!this.world.isBossArena){
-        this._openSkillTree();this.input.flush();return;
-      }
-      if(tile===T.EXIT&&this.world.isBossArena&&this.world.bossDefeated){
-        this._victory();this.input.flush();return;
-      }
-    }
-
-    /* Attack */
     if(action==='attack'){
       const atk=this.player.getAttackData();
       if(atk.projectile){
-        const proj=new Projectile(
-          this.player.x+this.player.facing.x*30,
-          this.player.y+this.player.facing.y*30,
-          Math.atan2(this.player.facing.y,this.player.facing.x),
-          atk.damage, this.player.weapon.color
-        );
-        this.player.projectiles.push(proj);
+        this.player.projectiles.push(new Projectile(this.player.x,this.player.y,atk.angle,atk.damage,this.player.weapon.color));
       } else {
-        this.particles.slash(atk.x,atk.y,atk.angle,atk.range);
         this._resolveAtk(atk);
       }
     }
-
-    /* Special */
-    if(action==='special')this._doSpecial();
-
-    /* World update */
-    const events=this.world.update(dt,this.player,this.particles);
-    for(const ev of events){
-      if(ev.type==='screenShake'&&this.settings.screenShake)this.ui.shake();
-      if(ev.type==='levelUp')this.ui.showRoomInfo(`Level Up! LV ${this.player.level} — +1 skill point`,2200);
-      if(ev.type==='dmgNumber')this.ui.dmgNumber(ev.x,ev.y,ev.amount,ev.kind,this.camera.x,this.camera.y);
-      if(ev.type==='bossDefeated'){
-        const wn=this.player.upgradeWeapon();
-        setTimeout(()=>{
-          this.ui.showRoomInfo(wn?`${ev.bossName} defeated! Weapon: ${wn}`:`${ev.bossName} defeated!`,3500);
-        },400);
+    if(action==='special' && this.player.weaponIdx>=1){
+      /* Special ability resolution stub */
+      this.player.specialCd=this.player.weapon.specialCd;
+      this.ui.showRoomInfo(`Cast: ${this.player.weapon.special}!`,1500);
+    }
+    if(action==='interact'){
+      const tile=this.world.map?this.world.map.getTileAt(this.player.x,this.player.y):T.VOID;
+      if(tile===T.CHECKPOINT && !this.world.checkpointReached)this._restAtCheckpoint();
+      else if(tile===T.EXIT){
+        if(this.state==='tutorial')this._enterLayer1();
+        else if(!this.world.isBossArena)this._enterBossArena();
       }
     }
 
-    /* Particles */
-    if(this.settings.particles)this.particles.update(dt);
+    /* Particles update */
+    this.particles.update(dt);
 
-    /* Camera */
-    this.camera.follow(this.player.x,this.player.y,this.world.map.width,this.world.map.height,this.canvas.width,this.canvas.height);
-
-    /* UI */
-    this.ui.update(this.player,this.world);
-
-    /* Interact prompt */
-    const tile=this.world.tileAtPx(this.player.x,this.player.y);
-    if(tile===T.CHECKPOINT&&this.world.enemies.length===0&&!this.world.isBossArena){
-      this.ui.showInteract('open Skill Tree');
-    } else if(tile===T.EXIT&&this.world.bossDefeated){
-      this.ui.showInteract('descend deeper');
-    } else {
-      this.ui.hideInteract();
+    /* Enemies resolution */
+    if(!this.world.isBossArena && this.world.enemies.length===0 && this.state==='playing'){
+      this.world.openDoors();
+    }
+    if(this.world.isBossArena && this.world.bossDefeated){
+      this.world.openDoors();
     }
 
-    /* Tutorial: boss dead → exit door → layer 1 */
-    if(this.state==='tutorial'&&this.world.bossDefeated&&!this._tutExitShown){
-      this._tutExitShown=true;
-      this.ui.showRoomInfo('The gate opens... Step through.',3000);
-    }
-    if(this.state==='tutorial'&&tile===T.EXIT&&this.world.bossDefeated){
-      this._enterLayer1();
+    for(let i=this.world.enemies.length-1;i>=0;i--){
+      const e=this.world.enemies[i];
+      const res=e.update(dt,this.player,this.world);
+      if(!e.alive){
+        this.player.killCount++;
+        const leveled=this.player.addSouls(e.souls);
+        this.ui.dmgNumber(e.x,e.y-35,e.souls,'dmg-soul',this.camera.x,this.camera.y);
+        if(leveled)this.ui.showRoomInfo('LEVEL UP! Rest at checkpoints to spend points.',3500);
+        this.world.enemies.splice(i,1);
+        continue;
+      }
+      if(res && res.type==='attack'){
+        const actualDmg=this.player.takeDamage(res.damage);
+        if(actualDmg>0){
+          this.ui.dmgNumber(this.player.x,this.player.y,'-'+actualDmg,'dmg-player',this.camera.x,this.camera.y);
+          this.ui.screenShake();
+        }
+      }
     }
 
-    /* Death */
-    if(this.player.hp<=0)this._die(`Slain in the ${this.world.isBossArena?'Boss Arena':'depths'}`);
+    /* Boss resolution loop */
+    if(this.world.boss && this.world.boss.alive){
+      const res=this.world.boss.update(dt,this.player,this.world);
+      if(res && res.type==='attack'){
+        const actualDmg=this.player.takeDamage(res.damage);
+        if(actualDmg>0){
+          this.ui.dmgNumber(this.player.x,this.player.y,'-'+actualDmg,'dmg-player',this.camera.x,this.camera.y);
+          this.ui.screenShake();
+        }
+      } else if(res && res.type==='groundSlam'){
+        if(U.dist(res.x,res.y,this.player.x,this.player.y)<res.radius){
+          const actualDmg=this.player.takeDamage(res.damage);
+          if(actualDmg>0){
+            this.ui.dmgNumber(this.player.x,this.player.y,'-'+actualDmg,'dmg-player',this.camera.x,this.camera.y);
+            this.ui.screenShake();
+          }
+        }
+        this.particles.burst(res.x,res.y,25,{color:'#c0392b',sMin:60,sMax:220});
+      }
+      if(!this.world.boss.alive){
+        this.player.addSouls(this.world.boss.souls);
+        this.ui.dmgNumber(this.world.boss.x,this.world.boss.y-40,this.world.boss.souls,'dmg-soul',this.camera.x,this.camera.y);
+        this.ui.showRoomInfo('THE GATEKEEPER DEFEATED! The exit path is open.',4000);
+      }
+    }
 
-    /* Victory flag */
-    if(this.world.isBossArena&&this.world.bossDefeated&&tile===T.EXIT&&!this._victoryFlag){
+    /* Projectiles vs Enemies hits */
+    for(const p of this.player.projectiles){
+      if(!p.alive)continue;
+      const targets=[...this.world.enemies,...(this.world.boss && this.world.boss.alive?[this.world.boss]:[])];
+      for(const e of targets){
+        if(U.aabb(p.x-p.r,p.y-p.r,p.r*2,p.r*2,e.left,e.top,e.w,e.h)){
+          p.alive=false;
+          const dmg=e.takeDamage(p.damage);
+          if(dmg>0){
+            const ka=Math.atan2(e.y-p.y,e.x-p.x);
+            e.knock(Math.cos(ka)*140,Math.sin(ka)*140);
+            this.ui.dmgNumber(e.x,e.y-20,p.damage,'dmg-magic',this.camera.x,this.camera.y);
+          }
+          break;
+        }
+      }
+    }
+
+    /* Death trigger check */
+    if(this.player.hp<=0){
+      this._gameover(this.world.isBossArena?`Slain by ${this.world.boss.name}`:`Slain in the depths`);
+    }
+
+    /* Victory flag exit check */
+    const tile=this.world.map?this.world.map.getTileAt(this.player.x,this.player.y):T.VOID;
+    if(this.world.isBossArena && this.world.bossDefeated && tile===T.EXIT && !this._victoryFlag){
       this._victoryFlag=true;this._victory();
     }
 
     this.input.flush();
+    this.ui.update(this.player,this.world);
+    this.camera.follow(this.player.x,this.player.y,this.canvas.width,this.canvas.height,this.world.width,this.world.height);
   }
 
-  /* ── Attack resolution ── */
-  _resolveAtk(atk){
-    const targets=[...this.world.enemies,...(this.world.boss&&this.world.boss.alive?[this.world.boss]:[])];
-    for(const e of targets){
-      if(U.dist(atk.x,atk.y,e.x,e.y)>atk.range+e.w/2)continue;
-      const ea=U.angle(atk.x,atk.y,e.x,e.y);
-      let diff=ea-atk.angle;
-      while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;
-      if(Math.abs(diff)>atk.arc/2)continue;
-      const dmg=e.takeDamage(atk.damage);
-      if(dmg>0){
-        const ka=U.angle(this.player.x,this.player.y,e.x,e.y);
-        e.knock(Math.cos(ka)*190,Math.sin(ka)*190);
-        const kind=atk.isCrit?'dmg-crit':'dmg-enemy';
-        this.ui.dmgNumber(e.x,e.y-20,atk.damage,kind,this.camera.x,this.camera.y);
-        if(e.isBoss&&this.settings.screenShake)this.ui.shake();
-        /* Stamina regen on hit */
-        this.player.stamina=Math.min(this.player.maxStamina,this.player.stamina+5);
-      }
-    }
-  }
-
-  /* ── Special abilities ── */
-  _doSpecial(){
-    const sp=this.player.weapon.special;
-    if(!sp)return;
-    this.player.specialCd=this.player.weapon.specialCd||5000;
-    const targets=[...this.world.enemies,...(this.world.boss&&this.world.boss.alive?[this.world.boss]:[])];
-
-    if(sp==='groundSmash'||sp==='heavySlam'){
-      /* Wide AOE */
-      for(const e of targets){
-        if(U.dist(this.player.x,this.player.y,e.x,e.y)<90){
-          const dmg=Math.round((this.player.damage)*2);
-          e.takeDamage(dmg);
-          this.ui.dmgNumber(e.x,e.y-20,dmg,'dmg-crit',this.camera.x,this.camera.y);
-        }
-      }
-      this.particles.slam(this.player.x,this.player.y,90);
-      if(this.settings.screenShake)this.ui.shake();
-    }
-
-    if(sp==='shadowStrike'||sp==='dashStrike'||sp==='bladestorm'){
-      this.player._dash();
-      setTimeout(()=>{
-        const ts2=[...this.world.enemies,...(this.world.boss&&this.world.boss.alive?[this.world.boss]:[])];
-        for(const e of ts2){
-          if(U.dist(this.player.x,this.player.y,e.x,e.y)<72){
-            const dmg=Math.round(this.player.damage*1.8);
-            e.takeDamage(dmg);
-            this.ui.dmgNumber(e.x,e.y-20,dmg,'dmg-crit',this.camera.x,this.camera.y);
-          }
-        }
-        this.particles.burst(this.player.x,this.player.y,14,{color:'#e74c3c',size:3,life:320,sMin:50,sMax:140});
-      },180);
-    }
-
-    if(sp==='fireball'||sp==='arcaneBlast'||sp==='orbStorm'){
-      /* Fire 3 projectiles in spread */
-      const baseAngle=Math.atan2(this.player.facing.y,this.player.facing.x);
-      for(let i=-1;i<=1;i++){
-        const a=baseAngle+i*0.25;
-        this.player.projectiles.push(new Projectile(
-          this.player.x+this.player.facing.x*30,
-          this.player.y+this.player.facing.y*30,
-          a, this.player.magicDmg*1.5, '#9b59b6', 280, 2200
-        ));
-      }
-      this.particles.magic(this.player.x,this.player.y,12);
-    }
-
-    if(sp==='spearThrow'){
-      const proj=new Projectile(
-        this.player.x+this.player.facing.x*30,
-        this.player.y+this.player.facing.y*30,
-        Math.atan2(this.player.facing.y,this.player.facing.x),
-        this.player.damage*2.2,'#e74c3c',420,2800
-      );
-      this.player.projectiles.push(proj);
-      this.particles.burst(this.player.x,this.player.y,8,{color:'#e67e22',size:3,life:300,sMin:40,sMax:100});
-    }
-  }
-
-  /* ── Draw ── */
   _draw(){
-    const ctx=this.ctx;
-    const W=this.canvas.width,H=this.canvas.height;
+    const ctx=this.ctx,W=this.canvas.width,H=this.canvas.height;
     ctx.clearRect(0,0,W,H);
     ctx.fillStyle='#050305';ctx.fillRect(0,0,W,H);
-    if(!this.player||!this.world.map)return;
+    if(this.state==='menu'||!this.player||!this.world.map)return;
+
     const cx=this.camera.x,cy=this.camera.y;
     this.world.draw(ctx,cx,cy,W,H);
-    if(this.settings.particles)this.particles.draw(ctx,cx,cy);
+    this.particles.draw(ctx,cx,cy);
     this.player.draw(ctx,cx,cy);
+
+    for(const e of this.world.enemies)e.draw(ctx,cx,cy);
+    if(this.world.boss)this.world.boss.draw(ctx,cx,cy);
+
     this._drawVignette(ctx,W,H);
   }
 
@@ -1617,23 +1394,23 @@ function spawnEmbers(){
   const c=document.getElementById('menuEmbers');
   if(!c)return;
   const colors=['#e67e22','#c0392b','#f39c12','#e74c3c'];
-  for(let i=0;i<40;i++){
+  for(let i=0; i<40; i++){
     const el=document.createElement('div');
     el.className='ember';
-    el.style.left=Math.random()*100+'%';
-    el.style.setProperty('--dur',U.rand(3.5,8)+'s');
-    el.style.setProperty('--delay',U.rand(0,6)+'s');
-    el.style.setProperty('--dx',(U.rand(-70,70))+'px');
-    el.style.setProperty('--sz',(U.rand(2,5))+'px');
-    el.style.setProperty('--col',U.choice(colors));
+    el.style.left=U.rand(0,100)+'%';
+    el.style.top=U.rand(0,100)+'%';
+    el.style.width=U.rand(2,6)+'px';
+    el.style.height=el.style.width;
+    el.style.background=U.choice(colors);
+    el.style.setProperty('--tx',U.rand(-60,60)+'px');
+    el.style.setProperty('--ty',U.rand(-120,-40)+'px');
+    el.style.animation=`emberFloat ${U.rand(2,5)}s linear infinite`;
     c.appendChild(el);
+    setTimeout(()=>el.remove(),5000);
   }
 }
 
-/* ──────────────────────────────────────────────────────────
-   BOOT
-────────────────────────────────────────────────────────── */
-window.addEventListener('DOMContentLoaded',()=>{
-  spawnEmbers();
-  window.game=new Game();
+/* Run game instantiation on window lock load */
+window.addEventListener('DOMContentLoaded', () => {
+  window.gameEngine = new Game();
 });
