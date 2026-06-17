@@ -1652,9 +1652,9 @@ class Enemy {
       }
     }
 
-    const movement = distance(this.x, this.y, this.lastX, this.lastY);
+    const movement = distance(this.x, this.y, this.lastX ?? this.x, this.lastY ?? this.y);
 
-    if (movement < 0.2) {
+    if (movement < 0.2 || Number.isNaN(movement)) {
       this.stuckTimer += dt;
     } else {
       this.stuckTimer = 0;
@@ -1722,6 +1722,9 @@ class Boss {
     this.dead = false;
     this.phase2 = false;
     this.frame = 0;
+    this.stuckTimer = 0;
+    this.lastX = x;
+    this.lastY = y;
   }
 
   takeDamage(amount) {

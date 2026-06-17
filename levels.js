@@ -34,7 +34,7 @@ const LEVELS = [
       h: 650,
       entranceX: 1840,
       entranceY: 850,
-      playerSpawn: { x: 2020, y: 850 },
+      playerSpawn: { x: 2045, y: 850 },
       bossPos: { x: 2350, y: 850 }
     },
 
