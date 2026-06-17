@@ -1259,3 +1259,17 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================
+   BOSS ARENA / GAME OVER / HUD PATCH
+   - Makes HUD smaller so it does not cover minimap
+   - Makes game over buttons clear
+   - Keeps boss bar clean
+   - Improves responsive screen fit
+============================================================ */
+
+/* Make top HUD smaller and cleaner */
+#hudTop {
+  padding: 
+
+}

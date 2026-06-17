@@ -1,26 +1,25 @@
 "use strict";
 
 /* ============================================================
-   INFERNAL DESCENT — FINAL POLISH BUILD
+   INFERNAL DESCENT — BOSS ARENA + SOUND + BLOCK BUILD
    Requires:
    1. sprites.js
    2. levels.js
    3. script.js
 
-   Fixes added:
-   - Mobs only damage on physical contact
-   - Boss melee only damages on physical contact
-   - Cerberus roar range nerfed
-   - Mage damage nerfed
-   - Mage uses Magic only, non-mages use Damage only
-   - Player faces mouse
-   - Fireball projectile visible
-   - Weapon swing timer added
-   - Chests and potions added
-   - Enemy detection range added
-   - Respawn at start of current level after death
-   - Safer enemy placement
-   - Less popup clutter
+   Added:
+   - Boss arena opens only after all mobs are killed
+   - Boss spawns only inside the arena
+   - Boss HP is 5x
+   - Mob HP is 2x
+   - Button click sounds
+   - Attack / special / chest sounds
+   - Cyclops and Devil beams no longer auto-track
+   - Mobs path around obstacles better
+   - Block shield absorbs 50 damage, breaks, then regens after 5s
+   - Game over screen shows respawn/back menu
+   - Respawn restarts the current level and respawns enemies
+   - Boss health bar only appears inside boss arena
 ============================================================ */
 
 /* ================= CANVAS SETUP ================= */
@@ -29,13 +28,13 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 const menuCanvas = document.getElementById("menuCanvas");
-const menuCtx = menuCanvas.getContext("2d");
+const menuCtx = menuCanvas?.getContext("2d");
 
 const classCanvas = document.getElementById("classCanvas");
-const classCtx = classCanvas.getContext("2d");
+const classCtx = classCanvas?.getContext("2d");
 
 const victoryCanvas = document.getElementById("victoryCanvas");
-const victoryCtx = victoryCanvas.getContext("2d");
+const victoryCtx = victoryCanvas?.getContext("2d");
 
 /* ================= INPUT ================= */
 
@@ -82,8 +81,13 @@ function held(code) {
 
 function once(code) {
   const value = !!pressed[code];
+  pressed[equivalentCodeFix(code)] = false;
   pressed[code] = false;
   return value;
+}
+
+function equivalentCodeFix(code) {
+  return code;
 }
 
 /* ================= HELPERS ================= */
@@ -92,7 +96,8 @@ const SOULS_PER_LEVEL = 5;
 
 const SETTINGS = {
   shake: true,
-  particles: true
+  particles: true,
+  sound: true
 };
 
 function clamp(v, min, max) {
@@ -115,11 +120,39 @@ function touching(a, b, range = 24) {
   return distance(a.x, a.y, b.x, b.y) <= range;
 }
 
-function pointDistance(px, py, x, y) {
-  return Math.hypot(px - x, py - y);
+function pointLineDistance(px, py, x1, y1, x2, y2) {
+  const A = px - x1;
+  const B = py - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+
+  let param = -1;
+
+  if (lenSq !== 0) {
+    param = dot / lenSq;
+  }
+
+  let xx;
+  let yy;
+
+  if (param < 0) {
+    xx = x1;
+    yy = y1;
+  } else if (param > 1) {
+    xx = x2;
+    yy = y2;
+  } else {
+    xx = x1 + param * C;
+    yy = y1 + param * D;
+  }
+
+  return Math.hypot(px - xx, py - yy);
 }
 
-function isInAttackCone(attacker, target, range, cone = 0.78) {
+function isInAttackCone(attacker, target, range, cone = 0.72) {
   const dx = target.x - attacker.x;
   const dy = target.y - attacker.y;
   const d = Math.hypot(dx, dy);
@@ -147,7 +180,6 @@ function showScreen(id) {
 function resizeCanvas() {
   [canvas, menuCanvas, classCanvas, victoryCanvas].forEach(c => {
     if (!c) return;
-
     c.width = window.innerWidth;
     c.height = window.innerHeight;
   });
@@ -186,6 +218,121 @@ function damageNumber(x, y, value, crit = false) {
 
   setTimeout(() => el.remove(), 850);
 }
+
+/* ================= SOUND EFFECTS ================= */
+
+const SoundFX = {
+  ctx: null,
+
+  unlock() {
+    if (!SETTINGS.sound) return;
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+
+    if (!this.ctx) {
+      this.ctx = new AudioContext();
+    }
+
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume();
+    }
+  },
+
+  tone(freq = 440, duration = 0.08, type = "square", volume = 0.08) {
+    if (!SETTINGS.sound) return;
+
+    this.unlock();
+
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(volume, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + duration + 0.04);
+  },
+
+  click() {
+    this.tone(520, 0.055, "square", 0.045);
+
+    setTimeout(() => {
+      this.tone(760, 0.045, "triangle", 0.035);
+    }, 35);
+  },
+
+  attack(classId = "warrior") {
+    if (classId === "mage") {
+      this.tone(380, 0.06, "sine", 0.05);
+
+      setTimeout(() => {
+        this.tone(720, 0.09, "triangle", 0.06);
+      }, 35);
+
+      return;
+    }
+
+    if (classId === "assassin") {
+      this.tone(720, 0.045, "sawtooth", 0.045);
+
+      setTimeout(() => {
+        this.tone(430, 0.04, "square", 0.035);
+      }, 35);
+
+      return;
+    }
+
+    this.tone(230, 0.07, "sawtooth", 0.06);
+
+    setTimeout(() => {
+      this.tone(150, 0.06, "square", 0.045);
+    }, 45);
+  },
+
+  special(classId = "warrior") {
+    this.tone(180, 0.08, "sawtooth", 0.06);
+
+    setTimeout(() => {
+      this.tone(classId === "mage" ? 880 : 360, 0.13, "triangle", 0.075);
+    }, 60);
+  },
+
+  chest() {
+    this.tone(500, 0.07, "triangle", 0.05);
+
+    setTimeout(() => {
+      this.tone(760, 0.09, "triangle", 0.055);
+    }, 70);
+  },
+
+  blockBreak() {
+    this.tone(140, 0.13, "sawtooth", 0.07);
+
+    setTimeout(() => {
+      this.tone(80, 0.16, "square", 0.06);
+    }, 70);
+  },
+
+  bossOpen() {
+    this.tone(180, 0.12, "sawtooth", 0.065);
+
+    setTimeout(() => {
+      this.tone(420, 0.16, "triangle", 0.075);
+    }, 120);
+  }
+};
 
 /* ================= GAME DATA ================= */
 
@@ -552,6 +699,67 @@ class ParticleSystem {
   }
 }
 
+/* ================= BEAM ATTACKS ================= */
+
+class BeamAttack {
+  constructor(x1, y1, x2, y2, damage, color, width = 22, windup = 520, active = 160) {
+    this.x1 = x1;
+    this.y1 = y1;
+    this.x2 = x2;
+    this.y2 = y2;
+
+    this.damage = damage;
+    this.color = color;
+    this.width = width;
+
+    this.windup = windup;
+    this.active = active;
+    this.timer = 0;
+
+    this.hit = false;
+    this.dead = false;
+  }
+
+  update(dt, world) {
+    this.timer += dt;
+
+    if (this.timer >= this.windup && this.timer <= this.windup + this.active) {
+      if (!this.hit) {
+        const p = game.player;
+        const d = pointLineDistance(p.x, p.y, this.x1, this.y1, this.x2, this.y2);
+
+        if (d <= this.width && world.hasLineOfSight(this.x1, this.y1, p.x, p.y)) {
+          p.takeDamage(this.damage);
+          this.hit = true;
+        }
+      }
+    }
+
+    if (this.timer > this.windup + this.active) {
+      this.dead = true;
+    }
+  }
+
+  draw(ctx, camX, camY) {
+    const isActive = this.timer >= this.windup;
+
+    ctx.save();
+
+    ctx.strokeStyle = isActive ? this.color : "rgba(255,255,255,0.35)";
+    ctx.lineWidth = isActive ? this.width * 0.55 : 3;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = isActive ? 24 : 8;
+    ctx.globalAlpha = isActive ? 0.85 : 0.45;
+
+    ctx.beginPath();
+    ctx.moveTo(this.x1 - camX, this.y1 - camY);
+    ctx.lineTo(this.x2 - camX, this.y2 - camY);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
 /* ================= PLAYER ================= */
 
 class Player {
@@ -576,6 +784,11 @@ class Player {
     this.baseDamage = data.damage;
     this.baseMagic = data.magic;
     this.blockPower = data.blockPower;
+
+    this.blockMax = 50;
+    this.blockHp = this.blockMax;
+    this.blockBroken = false;
+    this.blockRegenTimer = 0;
 
     this.color = data.color;
 
@@ -650,6 +863,16 @@ class Player {
     this.speedBoostTimer -= dt;
     this.attackBoostTimer -= dt;
 
+    if (this.blockBroken) {
+      this.blockRegenTimer -= dt;
+
+      if (this.blockRegenTimer <= 0) {
+        this.blockBroken = false;
+        this.blockHp = this.blockMax;
+        toast("Block Ready");
+      }
+    }
+
     mouse.worldX = mouse.x + world.cameraX;
     mouse.worldY = mouse.y + world.cameraY;
 
@@ -662,10 +885,10 @@ class Player {
       this.facingY = aimY / aimLen;
     }
 
-    this.blocking = held("KeyQ") && this.stamina > 5;
+    this.blocking = held("KeyQ") && this.stamina > 5 && !this.blockBroken;
 
     if (this.blocking) {
-      this.stamina = clamp(this.stamina - 14 * s, 0, this.maxStamina);
+      this.stamina = clamp(this.stamina - 12 * s, 0, this.maxStamina);
     } else {
       this.stamina = clamp(this.stamina + 22 * s, 0, this.maxStamina);
     }
@@ -697,8 +920,8 @@ class Player {
     const nx = this.x + mx * speed * s;
     const ny = this.y + my * speed * s;
 
-    if (!world.collides(nx, this.y)) this.x = nx;
-    if (!world.collides(this.x, ny)) this.y = ny;
+    if (!world.collides(nx, this.y, 18)) this.x = nx;
+    if (!world.collides(this.x, ny, 18)) this.y = ny;
 
     if (once("Space")) this.attack(world);
     if (once("KeyE")) this.special(world);
@@ -714,6 +937,8 @@ class Player {
 
   attack(world) {
     if (this.attackTimer > 0) return;
+
+    SoundFX.attack(this.classId);
 
     const weapon = this.weapon;
 
@@ -748,7 +973,7 @@ class Player {
       return;
     }
 
-    if (weapon.type === "hybrid" && this.classId !== "warrior") {
+    if (weapon.type === "hybrid") {
       this.projectiles.push(
         new Projectile({
           x: this.x + this.facingX * 30,
@@ -774,30 +999,18 @@ class Player {
 
         hitSomething = true;
 
-        damageNumber(
-          enemy.x - world.cameraX,
-          enemy.y - world.cameraY,
-          damage,
-          crit
-        );
-
+        damageNumber(enemy.x - world.cameraX, enemy.y - world.cameraY, damage, crit);
         world.particles.burst(enemy.x, enemy.y, this.color, 12);
       }
     }
 
-    if (world.boss && !world.boss.dead) {
+    if (world.boss && !world.boss.dead && world.inBossArena) {
       if (isInAttackCone(this, world.boss, weapon.range + 8, 0.6)) {
         world.boss.takeDamage(damage);
 
         hitSomething = true;
 
-        damageNumber(
-          world.boss.x - world.cameraX,
-          world.boss.y - world.cameraY,
-          damage,
-          crit
-        );
-
+        damageNumber(world.boss.x - world.cameraX, world.boss.y - world.cameraY, damage, crit);
         world.particles.burst(world.boss.x, world.boss.y, this.color, 16);
       }
     }
@@ -810,6 +1023,8 @@ class Player {
   special(world) {
     if (this.specialTimer > 0) return;
     if (this.stamina < 25) return;
+
+    SoundFX.special(this.classId);
 
     const weapon = this.weapon;
 
@@ -861,28 +1076,16 @@ class Player {
       if (isInAttackCone(this, enemy, radius, 0.42)) {
         enemy.takeDamage(damage);
 
-        damageNumber(
-          enemy.x - world.cameraX,
-          enemy.y - world.cameraY,
-          damage,
-          true
-        );
-
+        damageNumber(enemy.x - world.cameraX, enemy.y - world.cameraY, damage, true);
         world.particles.burst(enemy.x, enemy.y, this.color, 24);
       }
     }
 
-    if (world.boss && !world.boss.dead) {
+    if (world.boss && !world.boss.dead && world.inBossArena) {
       if (isInAttackCone(this, world.boss, radius + 10, 0.42)) {
         world.boss.takeDamage(damage);
 
-        damageNumber(
-          world.boss.x - world.cameraX,
-          world.boss.y - world.cameraY,
-          damage,
-          true
-        );
-
+        damageNumber(world.boss.x - world.cameraX, world.boss.y - world.cameraY, damage, true);
         world.particles.burst(world.boss.x, world.boss.y, this.color, 32);
       }
     }
@@ -897,30 +1100,42 @@ class Player {
 
     let finalDamage = amount;
 
-    if (this.blocking && this.stamina > 0) {
-      finalDamage = Math.ceil(amount * this.blockPower);
-      this.stamina = clamp(this.stamina - 12, 0, this.maxStamina);
+    if (this.blocking && this.blockHp > 0 && !this.blockBroken) {
+      const absorbed = Math.min(finalDamage, this.blockHp);
 
-      toast("Blocked");
-      if (game?.world) game.world.particles.burst(this.x, this.y, "#9fdcff", 14);
+      finalDamage -= absorbed;
+      this.blockHp -= absorbed;
+
+      game.world.particles.burst(this.x, this.y, "#9fdcff", 16);
+
+      if (this.blockHp <= 0) {
+        this.blockHp = 0;
+        this.blockBroken = true;
+        this.blocking = false;
+        this.blockRegenTimer = 5000;
+
+        SoundFX.blockBreak();
+        toast("Block Broken");
+      } else {
+        toast("Blocked");
+      }
+    }
+
+    if (finalDamage <= 0) {
+      this.invincible = 260;
+      return;
     }
 
     this.hp = clamp(this.hp - finalDamage, 0, this.maxHp);
     this.invincible = 520;
 
     if (game?.world) {
-      if (SETTINGS.shake) game.world.shake = this.blocking ? 4 : 8;
-
-      game.world.particles.burst(
-        this.x,
-        this.y,
-        this.blocking ? "#9fdcff" : "#ff2d1c",
-        16
-      );
+      if (SETTINGS.shake) game.world.shake = 8;
+      game.world.particles.burst(this.x, this.y, "#ff2d1c", 16);
     }
 
     if (this.hp <= 0) {
-      game.playerDied();
+      game.gameOver();
     }
   }
 
@@ -992,15 +1207,10 @@ class Player {
       ctx.globalAlpha = 0.45;
     }
 
-    SpriteRenderer.drawPlayer(
-      ctx,
-      this.x - camX,
-      this.y - camY,
-      this,
-      this.frame
-    );
+    SpriteRenderer.drawPlayer(ctx, this.x - camX, this.y - camY, this, this.frame);
 
     this.drawWeaponSwing(ctx, camX, camY);
+    this.drawBlockMeter(ctx, camX, camY);
 
     ctx.globalAlpha = 1;
 
@@ -1031,6 +1241,21 @@ class Player {
     ctx.beginPath();
     ctx.arc(x, y, this.weapon.range * 0.72, arcStart, arcEnd);
     ctx.stroke();
+
+    ctx.restore();
+  }
+
+  drawBlockMeter(ctx, camX, camY) {
+    const x = this.x - camX;
+    const y = this.y - camY + 38;
+
+    ctx.save();
+
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.fillRect(x - 24, y, 48, 5);
+
+    ctx.fillStyle = this.blockBroken ? "#ff2d1c" : "#9fdcff";
+    ctx.fillRect(x - 24, y, 48 * (this.blockHp / this.blockMax), 5);
 
     ctx.restore();
   }
@@ -1076,7 +1301,7 @@ class Projectile {
       return;
     }
 
-    if (world.collides(this.x, this.y)) {
+    if (world.collides(this.x, this.y, 8)) {
       world.particles.burst(this.x, this.y, this.color, 14);
       this.dead = true;
       return;
@@ -1088,13 +1313,7 @@ class Projectile {
       if (touching(this, enemy, this.radius + 16)) {
         enemy.takeDamage(this.damage);
 
-        damageNumber(
-          enemy.x - world.cameraX,
-          enemy.y - world.cameraY,
-          this.damage,
-          this.crit
-        );
-
+        damageNumber(enemy.x - world.cameraX, enemy.y - world.cameraY, this.damage, this.crit);
         world.particles.burst(enemy.x, enemy.y, this.color, 18);
 
         this.dead = true;
@@ -1102,16 +1321,10 @@ class Projectile {
       }
     }
 
-    if (world.boss && !world.boss.dead && touching(this, world.boss, this.radius + 30)) {
+    if (world.boss && !world.boss.dead && world.inBossArena && touching(this, world.boss, this.radius + 30)) {
       world.boss.takeDamage(this.damage);
 
-      damageNumber(
-        world.boss.x - world.cameraX,
-        world.boss.y - world.cameraY,
-        this.damage,
-        this.crit
-      );
-
+      damageNumber(world.boss.x - world.cameraX, world.boss.y - world.cameraY, this.damage, this.crit);
       world.particles.burst(world.boss.x, world.boss.y, this.color, 22);
 
       this.dead = true;
@@ -1195,6 +1408,8 @@ class Chest {
 
     this.opened = true;
 
+    SoundFX.chest();
+
     const potion = POTIONS[this.potionType] || POTIONS.health;
     potion.apply(game.player);
 
@@ -1256,8 +1471,8 @@ class Enemy {
     this.x = x;
     this.y = y;
 
-    this.maxHp = data.hp;
-    this.hp = data.hp;
+    this.maxHp = data.hp * 2;
+    this.hp = this.maxHp;
 
     this.speed = data.speed;
     this.damage = data.damage;
@@ -1295,6 +1510,7 @@ class Enemy {
 
   update(dt, world) {
     if (this.dead) return;
+    if (world.inBossArena) return;
 
     this.frame += dt;
     this.flash -= dt;
@@ -1303,9 +1519,7 @@ class Enemy {
     const player = game.player;
     const d = distance(this.x, this.y, player.x, player.y);
 
-    const detectRange =
-      this.detect +
-      (world.level.detectionBonus || 0);
+    const detectRange = this.detect + (world.level.detectionBonus || 0);
 
     const canSeePlayer =
       d <= detectRange &&
@@ -1319,7 +1533,7 @@ class Enemy {
       return;
     }
 
-    if (d > detectRange * 1.45) {
+    if (d > detectRange * 1.55) {
       this.awake = false;
       return;
     }
@@ -1383,12 +1597,22 @@ class Enemy {
       world.hasLineOfSight(this.x, this.y, player.x, player.y);
 
     if (d < beamRange && beamLine && this.cooldown <= 0) {
-      player.takeDamage(ENEMY_TYPES.cyclops.beamDamage);
+      world.beams.push(
+        new BeamAttack(
+          this.x,
+          this.y - 20,
+          player.x,
+          player.y,
+          ENEMY_TYPES.cyclops.beamDamage,
+          "#ff2d1c",
+          22,
+          560,
+          160
+        )
+      );
 
-      world.particles.line(this.x, this.y, player.x, player.y, "#ff2d1c");
       toast("Beam");
-
-      this.cooldown = 2800;
+      this.cooldown = 3000;
       return;
     }
 
@@ -1406,39 +1630,25 @@ class Enemy {
     const s = dt / 1000;
     const step = speed * s;
 
-    const nx = this.x + dx * step;
-    const ny = this.y + dy * step;
+    const attempts = [
+      { x: dx, y: dy },
+      { x: -dy, y: dx },
+      { x: dy, y: -dx },
+      { x: dx * 0.7 - dy * 0.7, y: dy * 0.7 + dx * 0.7 },
+      { x: dx * 0.7 + dy * 0.7, y: dy * 0.7 - dx * 0.7 }
+    ];
 
     let moved = false;
 
-    if (!world.collides(nx, this.y)) {
-      this.x = nx;
-      moved = true;
-    }
+    for (const a of attempts) {
+      const nx = this.x + a.x * step;
+      const ny = this.y + a.y * step;
 
-    if (!world.collides(this.x, ny)) {
-      this.y = ny;
-      moved = true;
-    }
-
-    if (!moved) {
-      const sideX = -dy;
-      const sideY = dx;
-
-      const try1x = this.x + sideX * step;
-      const try1y = this.y + sideY * step;
-
-      const try2x = this.x - sideX * step;
-      const try2y = this.y - sideY * step;
-
-      if (!world.collides(try1x, try1y)) {
-        this.x = try1x;
-        this.y = try1y;
+      if (!world.collides(nx, ny, 20)) {
+        this.x = nx;
+        this.y = ny;
         moved = true;
-      } else if (!world.collides(try2x, try2y)) {
-        this.x = try2x;
-        this.y = try2y;
-        moved = true;
+        break;
       }
     }
 
@@ -1451,15 +1661,9 @@ class Enemy {
     }
 
     if (this.stuckTimer > 700) {
-      const angle = rand(0, Math.PI * 2);
-      const pushX = Math.cos(angle) * 30;
-      const pushY = Math.sin(angle) * 30;
-
-      if (!world.collides(this.x + pushX, this.y + pushY)) {
-        this.x += pushX;
-        this.y += pushY;
-      }
-
+      const p = world.findSafeSpotNear(this.x, this.y, 45, 110);
+      this.x = p.x;
+      this.y = p.y;
       this.stuckTimer = 0;
     }
 
@@ -1506,8 +1710,8 @@ class Boss {
     this.x = x;
     this.y = y;
 
-    this.maxHp = data.hp;
-    this.hp = data.hp;
+    this.maxHp = data.hp * 5;
+    this.hp = this.maxHp;
 
     this.damage = data.damage;
     this.souls = data.souls;
@@ -1518,7 +1722,6 @@ class Boss {
     this.dead = false;
     this.phase2 = false;
     this.frame = 0;
-    this.stuckTimer = 0;
   }
 
   takeDamage(amount) {
@@ -1545,6 +1748,7 @@ class Boss {
 
   update(dt, world) {
     if (this.dead) return;
+    if (!world.inBossArena) return;
 
     this.frame += dt;
     this.cooldown -= dt;
@@ -1552,11 +1756,9 @@ class Boss {
     const player = game.player;
     const d = distance(this.x, this.y, player.x, player.y);
 
-    this.updateBossHUD();
+    this.updateBossHUD(world);
 
-    const bossDetect = 720;
-
-    if (d < bossDetect && d > 95) {
+    if (d > 95) {
       const dx = (player.x - this.x) / (d || 1);
       const dy = (player.y - this.y) / (d || 1);
 
@@ -1565,7 +1767,7 @@ class Boss {
       this.moveSmart(world, dx, dy, speed, dt);
     }
 
-    if (this.cooldown <= 0 && d < bossDetect + 120) {
+    if (this.cooldown <= 0) {
       this.attack(player, world, d);
     }
   }
@@ -1574,40 +1776,36 @@ class Boss {
     const s = dt / 1000;
     const step = speed * s;
 
-    const nx = this.x + dx * step;
-    const ny = this.y + dy * step;
+    const attempts = [
+      { x: dx, y: dy },
+      { x: -dy, y: dx },
+      { x: dy, y: -dx },
+      { x: dx * 0.6 - dy * 0.8, y: dy * 0.6 + dx * 0.8 },
+      { x: dx * 0.6 + dy * 0.8, y: dy * 0.6 - dx * 0.8 }
+    ];
 
-    let moved = false;
+    for (const a of attempts) {
+      const nx = this.x + a.x * step;
+      const ny = this.y + a.y * step;
 
-    if (!world.collides(nx, this.y)) {
-      this.x = nx;
-      moved = true;
-    }
-
-    if (!world.collides(this.x, ny)) {
-      this.y = ny;
-      moved = true;
-    }
-
-    if (!moved) {
-      const sideX = -dy;
-      const sideY = dx;
-
-      if (!world.collides(this.x + sideX * step, this.y + sideY * step)) {
-        this.x += sideX * step;
-        this.y += sideY * step;
-      } else if (!world.collides(this.x - sideX * step, this.y - sideY * step)) {
-        this.x -= sideX * step;
-        this.y -= sideY * step;
+      if (!world.collides(nx, ny, 35)) {
+        this.x = nx;
+        this.y = ny;
+        return;
       }
     }
   }
 
-  updateBossHUD() {
+  updateBossHUD(world) {
     const bossHud = document.getElementById("bossHud");
     const bossName = document.getElementById("bossName");
     const bossBar = document.getElementById("bossBar");
     const bossPhase = document.getElementById("bossPhase");
+
+    if (!world.inBossArena) {
+      if (bossHud) bossHud.classList.add("hidden");
+      return;
+    }
 
     if (bossHud) bossHud.classList.remove("hidden");
     if (bossName) bossName.textContent = this.name;
@@ -1664,9 +1862,20 @@ class Boss {
       }
 
       if (move === 2) {
-        if (!world.hasLineOfSight || world.hasLineOfSight(this.x, this.y, player.x, player.y)) {
-          player.takeDamage(30);
-          world.particles.line(this.x, this.y, player.x, player.y, "#ff6a3d");
+        if (world.hasLineOfSight(this.x, this.y, player.x, player.y)) {
+          world.beams.push(
+            new BeamAttack(
+              this.x,
+              this.y - 25,
+              player.x,
+              player.y,
+              30,
+              "#ff6a3d",
+              28,
+              600,
+              170
+            )
+          );
         }
 
         toast("Beam");
@@ -1688,24 +1897,35 @@ class Boss {
       }
 
       if (move === 1) {
-        if (!world.hasLineOfSight || world.hasLineOfSight(this.x, this.y, player.x, player.y)) {
-          player.takeDamage(25);
-          world.particles.line(this.x, this.y, player.x, player.y, "#ff2d1c");
+        if (world.hasLineOfSight(this.x, this.y, player.x, player.y)) {
+          world.beams.push(
+            new BeamAttack(
+              this.x,
+              this.y - 45,
+              player.x,
+              player.y,
+              28,
+              "#ff2d1c",
+              30,
+              650,
+              180
+            )
+          );
         }
 
-        toast("Fireball");
+        toast("Devil Beam");
       }
 
       if (move === 2) {
         toast("Summon");
 
-        if (world.enemies.length < 10) {
-          for (let i = 0; i < 3; i++) {
+        if (world.enemies.length < 3) {
+          for (let i = 0; i < 2; i++) {
             const p = world.findSafeSpotNear(this.x, this.y, 180, 320);
 
-            world.enemies.push(
-              new Enemy(choice(["hound", "cyclops", "gargoyle"]), p.x, p.y)
-            );
+            const summoned = new Enemy(choice(["hound", "gargoyle"]), p.x, p.y);
+            summoned.awake = true;
+            world.enemies.push(summoned);
           }
         }
       }
@@ -1724,13 +1944,7 @@ class Boss {
   draw(ctx, camX, camY) {
     if (this.dead) return;
 
-    SpriteRenderer.drawBoss(
-      ctx,
-      this.x - camX,
-      this.y - camY,
-      this,
-      this.frame
-    );
+    SpriteRenderer.drawBoss(ctx, this.x - camX, this.y - camY, this, this.frame);
   }
 }
 
@@ -1750,14 +1964,12 @@ class Hazard {
     this.frame += dt;
     this.timer -= dt;
 
+    if (world.inBossArena) return;
+
     const d = distance(this.x, this.y, player.x, player.y);
 
     if (this.type === "ash" && d < this.r) {
-      player.stamina = clamp(
-        player.stamina - 8 * (dt / 1000),
-        0,
-        player.maxStamina
-      );
+      player.stamina = clamp(player.stamina - 8 * (dt / 1000), 0, player.maxStamina);
     }
 
     if (this.type === "lava" && d < this.r) {
@@ -1808,17 +2020,17 @@ class Hazard {
     }
 
     if (this.type === "geyser") {
-      SpriteFX.glow(ctx, x, y, this.r + 20, "rgba(255,90,20,0.42)",
-      ctx.fillStyle = "rgba(255,110,30,0.28)")
+      SpriteFX.glow(ctx, x, y, this.r + 20, "rgba(255,90,20,0.42)");
+      ctx.fillStyle = "rgba(255,110,30,0.28)";
     }
 
     if (this.type === "debris") {
-      SpriteFX.glow(ctx, x, y, this.r, "rgba(255,255,255,0.09)")
+      SpriteFX.glow(ctx, x, y, this.r, "rgba(255,255,255,0.09)");
       ctx.fillStyle = "rgba(200,190,180,0.17)";
     }
 
     if (this.type === "void") {
-      SpriteFX.glow(ctx, x, y, this.r + 26, "rgba(255,0,30,0.22)")
+      SpriteFX.glow(ctx, x, y, this.r + 26, "rgba(255,0,30,0.22)");
       ctx.fillStyle = "rgba(0,0,0,0.52)";
     }
 
@@ -1851,7 +2063,12 @@ class World {
     this.enemies = [];
     this.hazards = [];
     this.chests = [];
+    this.beams = [];
     this.boss = null;
+
+    this.bossArenaUnlocked = false;
+    this.inBossArena = false;
+    this.bossArenaEntered = false;
 
     this.particles = new ParticleSystem();
 
@@ -1873,20 +2090,12 @@ class World {
       this.enemies.push(new Enemy(e.type, safe.x, safe.y));
     }
 
-    this.hazards = this.level.hazards.map(
-      h => new Hazard(h.type, h.x, h.y, h.r)
-    );
+    this.hazards = this.level.hazards.map(h => new Hazard(h.type, h.x, h.y, h.r));
 
-    this.chests = (this.level.chests || []).map(
-      c => new Chest(c.x, c.y, c.potion)
-    );
+    this.chests = (this.level.chests || []).map(c => new Chest(c.x, c.y, c.potion));
 
-    const bossSpot = this.findNearestSafeSpot(
-      this.level.bossPos.x,
-      this.level.bossPos.y
-    );
-
-    this.boss = new Boss(this.level.boss, bossSpot.x, bossSpot.y);
+    this.boss = null;
+    this.beams = [];
 
     this.addRandomDecor();
 
@@ -1897,11 +2106,12 @@ class World {
       game.player.invincible = 900;
     }
 
+    this.hideBossHUD();
     this.updateLevelUI();
   }
 
   addRandomDecor() {
-    const max = this.levelIndex === 0 ? 4 : 12;
+    const max = this.levelIndex === 0 ? 4 : 10;
 
     for (let i = 0; i < max; i++) {
       const p = this.findSafeOpenSpot();
@@ -1921,21 +2131,53 @@ class World {
     const objectiveText = document.getElementById("objectiveText");
 
     if (layerTitle) layerTitle.textContent = this.level.short;
-    if (objectiveText) objectiveText.textContent = this.level.objective;
+
+    if (objectiveText) {
+      objectiveText.textContent = this.inBossArena
+        ? this.level.bossObjective
+        : this.level.objective;
+    }
+  }
+
+  hideBossHUD() {
+    document.getElementById("bossHud")?.classList.add("hidden");
   }
 
   isBlockingType(type) {
     return ["wall", "column", "pillar", "throne", "rubble", "barricade"].includes(type);
   }
 
+  pointInsideBossArena(x, y) {
+    const a = this.level.bossArena;
+    if (!a) return false;
+
+    return x > a.x && x < a.x + a.w && y > a.y && y < a.y + a.h;
+  }
+
   collides(x, y, radius = 18) {
-    if (
-      x < 70 ||
-      y < 70 ||
-      x > this.width - 70 ||
-      y > this.height - 70
-    ) {
+    if (x < 70 || y < 70 || x > this.width - 70 || y > this.height - 70) {
       return true;
+    }
+
+    const arena = this.level.bossArena;
+
+    if (arena) {
+      const insideArena = this.pointInsideBossArena(x, y);
+
+      if (!this.inBossArena && insideArena) {
+        return true;
+      }
+
+      if (this.inBossArena) {
+        if (
+          x < arena.x + 45 ||
+          x > arena.x + arena.w - 45 ||
+          y < arena.y + 45 ||
+          y > arena.y + arena.h - 45
+        ) {
+          return true;
+        }
+      }
     }
 
     for (const d of this.decor) {
@@ -1990,7 +2232,7 @@ class World {
         continue;
       }
 
-      if (distance(x, y, this.level.bossPos.x, this.level.bossPos.y) < 350) {
+      if (this.level.bossArena && this.pointInsideBossArena(x, y)) {
         continue;
       }
 
@@ -2050,6 +2292,12 @@ class World {
 
     this.particles.update(dt);
 
+    for (const b of this.beams) {
+      b.update(dt, this);
+    }
+
+    this.beams = this.beams.filter(b => !b.dead);
+
     for (const h of this.hazards) {
       h.update(dt, game.player, this);
     }
@@ -2064,6 +2312,15 @@ class World {
 
     this.enemies = this.enemies.filter(e => !e.dead);
 
+    if (!this.bossArenaUnlocked && this.enemies.length === 0 && !this.inBossArena) {
+      this.bossArenaUnlocked = true;
+      SoundFX.bossOpen();
+      toast("Boss Arena Open");
+      this.updateLevelUI();
+    }
+
+    this.checkBossArenaEntry();
+
     if (this.boss && !this.boss.dead) {
       this.boss.update(dt, this);
     }
@@ -2073,6 +2330,42 @@ class World {
 
     this.cameraX = clamp(this.cameraX, 0, Math.max(0, this.width - canvas.width));
     this.cameraY = clamp(this.cameraY, 0, Math.max(0, this.height - canvas.height));
+  }
+
+  checkBossArenaEntry() {
+    if (!this.bossArenaUnlocked) return;
+    if (this.inBossArena) return;
+
+    const a = this.level.bossArena;
+    if (!a) return;
+
+    const d = distance(game.player.x, game.player.y, a.entranceX, a.entranceY);
+
+    if (d < 70) {
+      this.enterBossArena();
+    }
+  }
+
+  enterBossArena() {
+    const a = this.level.bossArena;
+
+    this.inBossArena = true;
+    this.bossArenaEntered = true;
+
+    game.player.x = a.playerSpawn.x;
+    game.player.y = a.playerSpawn.y;
+    game.player.projectiles = [];
+    game.player.invincible = 1000;
+
+    this.beams = [];
+    this.enemies = [];
+
+    const bossSpot = this.findNearestSafeSpot(a.bossPos.x, a.bossPos.y);
+    this.boss = new Boss(this.level.boss, bossSpot.x, bossSpot.y);
+
+    this.updateLevelUI();
+
+    toast(this.level.boss);
   }
 
   draw(ctx) {
@@ -2090,6 +2383,7 @@ class World {
 
     this.drawFloor(ctx);
     this.drawDecor(ctx);
+    this.drawBossGate(ctx);
 
     for (const h of this.hazards) {
       h.draw(ctx, this.cameraX, this.cameraY);
@@ -2108,6 +2402,10 @@ class World {
     }
 
     game.player.draw(ctx, this.cameraX, this.cameraY);
+
+    for (const b of this.beams) {
+      b.draw(ctx, this.cameraX, this.cameraY);
+    }
 
     this.particles.draw(ctx, this.cameraX, this.cameraY);
 
@@ -2175,27 +2473,57 @@ class World {
     ctx.fillStyle = t.fog;
 
     for (let i = 0; i < 18; i++) {
-      const fx =
-        (i * 241 -
-          this.cameraX * 0.13 +
-          this.frame * 0.012) %
-        canvas.width;
-
-      const fy =
-        (i * 157 -
-          this.cameraY * 0.12) %
-        canvas.height;
+      const fx = (i * 241 - this.cameraX * 0.13 + this.frame * 0.012) % canvas.width;
+      const fy = (i * 157 - this.cameraY * 0.12) % canvas.height;
 
       ctx.beginPath();
-      ctx.arc(
-        fx,
-        fy,
-        70 + Math.sin(this.frame / 900 + i) * 18,
-        0,
-        Math.PI * 2
-      );
+      ctx.arc(fx, fy, 70 + Math.sin(this.frame / 900 + i) * 18, 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+
+  drawBossGate(ctx) {
+    const a = this.level.bossArena;
+    if (!a) return;
+
+    const x = a.entranceX - this.cameraX;
+    const y = a.entranceY - this.cameraY;
+
+    ctx.save();
+
+    if (this.bossArenaUnlocked && !this.inBossArena) {
+      SpriteFX.glow(ctx, x, y, 90, "rgba(255,159,46,0.45)");
+
+      ctx.strokeStyle = "#ff9f2e";
+      ctx.lineWidth = 5;
+
+      ctx.beginPath();
+      ctx.arc(x, y, 46 + Math.sin(this.frame / 180) * 4, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.font = "800 12px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(255,240,210,0.9)";
+      ctx.fillText("BOSS ARENA", x, y - 62);
+    } else if (!this.inBossArena) {
+      ctx.globalAlpha = 0.55;
+
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.beginPath();
+      ctx.arc(x, y, 44, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.font = "700 11px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.fillText(`${this.enemies.length} enemies left`, x, y - 58);
+    }
+
+    ctx.restore();
   }
 
   drawDecor(ctx) {
@@ -2264,13 +2592,7 @@ class World {
       }
 
       if (d.type === "lavaRiver") {
-        SpriteFX.glow(
-          ctx,
-          x + d.w / 2,
-          y + d.h / 2,
-          160,
-          "rgba(255,70,20,0.34)"
-        );
+        SpriteFX.glow(ctx, x + d.w / 2, y + d.h / 2, 160, "rgba(255,70,20,0.34)");
 
         ctx.fillStyle = "rgba(255,70,20,0.34)";
         ctx.fillRect(x, y, d.w, d.h);
@@ -2366,11 +2688,11 @@ class World {
   drawMiniMap(ctx) {
     if (!this.showMiniMap) return;
 
-    const w = 150;
-    const h = 100;
+    const w = 136;
+    const h = 88;
 
     const x = canvas.width - w - 18;
-    const y = 18;
+    const y = 98;
 
     ctx.save();
     ctx.globalAlpha = 0.72;
@@ -2385,30 +2707,20 @@ class World {
       if (c.opened) continue;
 
       ctx.fillStyle = "#ff9f2e";
-      ctx.fillRect(
-        x + (c.x / this.width) * w - 2,
-        y + (c.y / this.height) * h - 2,
-        4,
-        4
-      );
+      ctx.fillRect(x + (c.x / this.width) * w - 2, y + (c.y / this.height) * h - 2, 4, 4);
+    }
+
+    for (const e of this.enemies) {
+      ctx.fillStyle = "#ff3b24";
+      ctx.fillRect(x + (e.x / this.width) * w - 1, y + (e.y / this.height) * h - 1, 3, 3);
     }
 
     ctx.fillStyle = "#ffd078";
-    ctx.fillRect(
-      x + (game.player.x / this.width) * w - 3,
-      y + (game.player.y / this.height) * h - 3,
-      6,
-      6
-    );
+    ctx.fillRect(x + (game.player.x / this.width) * w - 3, y + (game.player.y / this.height) * h - 3, 6, 6);
 
-    if (this.boss && !this.boss.dead) {
+    if (this.boss && !this.boss.dead && this.inBossArena) {
       ctx.fillStyle = "#ff3b24";
-      ctx.fillRect(
-        x + (this.boss.x / this.width) * w - 4,
-        y + (this.boss.y / this.height) * h - 4,
-        8,
-        8
-      );
+      ctx.fillRect(x + (this.boss.x / this.width) * w - 4, y + (this.boss.y / this.height) * h - 4, 8, 8);
     }
 
     ctx.restore();
@@ -2427,13 +2739,24 @@ class Game {
 
     this.running = false;
     this.paused = false;
+    this.dead = false;
+
+    this.deaths = 0;
 
     this.last = 0;
+    this.rafId = null;
 
     this.bindUI();
   }
 
   bindUI() {
+    document.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        SoundFX.unlock();
+        SoundFX.click();
+      });
+    });
+
     document.getElementById("btnPlay")?.addEventListener("click", () => {
       showScreen("screen-class");
     });
@@ -2473,8 +2796,18 @@ class Game {
       });
     });
 
-    document.getElementById("btnTryAgain")?.addEventListener("click", () => this.restartLevel());
-    document.getElementById("btnGameOverMenu")?.addEventListener("click", () => location.reload());
+    const tryAgain = document.getElementById("btnTryAgain");
+    if (tryAgain) {
+      tryAgain.textContent = "Respawn";
+      tryAgain.addEventListener("click", () => this.respawnCurrentLevel());
+    }
+
+    const menuBtn = document.getElementById("btnGameOverMenu");
+    if (menuBtn) {
+      menuBtn.textContent = "Back To Main Menu";
+      menuBtn.addEventListener("click", () => location.reload());
+    }
+
     document.getElementById("btnPlayAgain")?.addEventListener("click", () => this.restartRun());
     document.getElementById("btnVictoryMenu")?.addEventListener("click", () => location.reload());
 
@@ -2509,6 +2842,8 @@ class Game {
 
     this.running = true;
     this.paused = false;
+    this.dead = false;
+    this.deaths = 0;
 
     document.getElementById("bossHud")?.classList.add("hidden");
 
@@ -2517,8 +2852,17 @@ class Game {
 
     this.updateHUD();
 
+    this.startLoop();
+  }
+
+  startLoop() {
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+
     this.last = performance.now();
-    requestAnimationFrame(t => this.loop(t));
+    this.rafId = requestAnimationFrame(t => this.loop(t));
   }
 
   restartRun() {
@@ -2528,6 +2872,8 @@ class Game {
 
     this.running = true;
     this.paused = false;
+    this.dead = false;
+    this.deaths = 0;
 
     document.getElementById("bossHud")?.classList.add("hidden");
 
@@ -2535,12 +2881,10 @@ class Game {
     toast("Restarted");
 
     this.updateHUD();
-
-    this.last = performance.now();
-    requestAnimationFrame(t => this.loop(t));
+    this.startLoop();
   }
 
-  restartLevel() {
+  respawnCurrentLevel() {
     if (!this.player) {
       this.restartRun();
       return;
@@ -2548,8 +2892,11 @@ class Game {
 
     this.player.hp = this.player.maxHp;
     this.player.stamina = this.player.maxStamina;
+    this.player.blockHp = this.player.blockMax;
+    this.player.blockBroken = false;
+    this.player.blockRegenTimer = 0;
     this.player.projectiles = [];
-    this.player.invincible = 1000;
+    this.player.invincible = 1200;
     this.player.speedBoostTimer = 0;
     this.player.attackBoostTimer = 0;
 
@@ -2557,6 +2904,7 @@ class Game {
 
     this.running = true;
     this.paused = false;
+    this.dead = false;
 
     document.getElementById("bossHud")?.classList.add("hidden");
 
@@ -2564,17 +2912,27 @@ class Game {
     toast("Respawned");
 
     this.updateHUD();
-
-    this.last = performance.now();
-    requestAnimationFrame(t => this.loop(t));
+    this.startLoop();
   }
 
-  playerDied() {
-    this.running = false;
+  gameOver() {
+    if (this.dead) return;
 
-    setTimeout(() => {
-      this.restartLevel();
-    }, 700);
+    this.dead = true;
+    this.running = false;
+    this.paused = false;
+    this.deaths++;
+
+    document.getElementById("bossHud")?.classList.add("hidden");
+
+    const stats = document.getElementById("gameoverStats");
+
+    if (stats) {
+      stats.textContent =
+        `Deaths ${this.deaths} · Level ${this.player.level} · Kills ${this.player.kills} · Souls ${this.player.totalSouls}`;
+    }
+
+    showScreen("screen-gameover");
   }
 
   loop(t) {
@@ -2588,7 +2946,7 @@ class Game {
       this.draw();
     }
 
-    requestAnimationFrame(time => this.loop(time));
+    this.rafId = requestAnimationFrame(time => this.loop(time));
   }
 
   update(dt) {
@@ -2634,6 +2992,8 @@ class Game {
   }
 
   pause() {
+    if (this.dead) return;
+
     this.paused = true;
     showScreen("screen-pause");
   }
@@ -2644,6 +3004,8 @@ class Game {
   }
 
   openSkills() {
+    if (this.dead) return;
+
     this.paused = true;
     this.updateSkillScreen();
     showScreen("screen-skills");
@@ -2696,10 +3058,6 @@ class Game {
     this.updateHUD();
   }
 
-  gameOver() {
-    this.playerDied();
-  }
-
   victory() {
     this.running = false;
 
@@ -2707,7 +3065,7 @@ class Game {
 
     if (stats) {
       stats.textContent =
-        `Final Level ${this.player.level} · Kills ${this.player.kills} · Souls ${this.player.totalSouls}`;
+        `Final Level ${this.player.level} · Deaths ${this.deaths} · Kills ${this.player.kills} · Souls ${this.player.totalSouls}`;
     }
 
     showScreen("screen-victory");
