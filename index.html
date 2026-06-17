@@ -1,15 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<<<<<<< HEAD
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Infernal Descent — The Broken Curse</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
+=======
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infernal Descent</title>
+  <link rel="stylesheet" href="style.css">
+>>>>>>> 96eaff34f2fa5cdb2e5b4718dd7cbc677e254d96
 </head>
 <body>
+  <div id="brightness-overlay"></div>
 
+<<<<<<< HEAD
 <!-- ████  LOADING SCREEN  ████ -->
 <div id="screen-loading" class="screen active">
   <div class="loading-content">
@@ -349,9 +358,96 @@
           <div class="hbar-track"><div id="stBar" class="hbar hbar-st"></div></div>
           <div id="stVal" class="hbar-val">50/50</div>
         </div>
+=======
+  <!-- Landing Page -->
+  <section id="landing" class="screen active">
+    <div class="landing-bg"></div>
+    <div class="landing-content">
+      <h1 class="game-title">Infernal Descent</h1>
+      <p class="tagline">The only way out is down.</p>
+      <nav class="landing-nav">
+        <button id="btn-play" class="btn btn-primary btn-lg">Play</button>
+        <button id="btn-settings" class="btn btn-secondary">Settings</button>
+        <button id="btn-keybinds" class="btn btn-secondary">Keybinds</button>
+        <button id="btn-about" class="btn btn-secondary">About</button>
+      </nav>
+    </div>
+    <footer class="landing-footer">A fallen warrior's journey through the depths of Purgatory</footer>
+  </section>
+
+  <!-- Class Selection -->
+  <section id="class-select" class="screen">
+    <div class="class-header">
+      <h2>Infernal Descent</h2>
+      <p class="souls-label">SOULS</p>
+      <p class="class-prompt">Choose your path. Your class defines how you survive the descent.</p>
+    </div>
+    <div class="class-cards">
+      <article class="class-card" data-class="assassin">
+        <h3>The Assassin</h3>
+        <p class="class-desc">Swift and deadly. Strike fast, dodge faster.</p>
+        <ul class="stat-list">
+          <li><span>Speed</span><span class="stat-high">High</span></li>
+          <li><span>Stamina</span><span class="stat-med">Medium</span></li>
+          <li><span>Health</span><span class="stat-low">Low</span></li>
+          <li><span>Attack</span><span class="stat-med">Medium</span></li>
+        </ul>
+        <p class="weapon-preview">Fire Dagger → Demon Katana → Devil's Nagakiba</p>
+      </article>
+      <article class="class-card" data-class="warrior">
+        <h3>The Warrior</h3>
+        <p class="class-desc">Unbreakable will. Absorb punishment, deliver devastation.</p>
+        <ul class="stat-list">
+          <li><span>Speed</span><span class="stat-low">Low</span></li>
+          <li><span>Stamina</span><span class="stat-med">Medium</span></li>
+          <li><span>Health</span><span class="stat-high">High</span></li>
+          <li><span>Attack</span><span class="stat-high">High</span></li>
+        </ul>
+        <p class="weapon-preview">Fire Axe → Demon Greatsword → Devil's Greatspear</p>
+      </article>
+      <article class="class-card" data-class="mage">
+        <h3>The Mage</h3>
+        <p class="class-desc">Arcane fury from the void. Destroy from afar.</p>
+        <ul class="stat-list">
+          <li><span>Magic</span><span class="stat-high">High</span></li>
+          <li><span>Speed</span><span class="stat-med">Medium</span></li>
+          <li><span>Health</span><span class="stat-low">Low</span></li>
+          <li><span>Stamina</span><span class="stat-med">Medium</span></li>
+        </ul>
+        <p class="weapon-preview">Fire Gloves → Demon Wand → Devil's Orb</p>
+      </article>
+    </div>
+    <button id="btn-back-landing" class="btn btn-ghost">← Back</button>
+  </section>
+
+  <!-- Game -->
+  <section id="game-screen" class="screen">
+    <canvas id="game-canvas"></canvas>
+    <div id="hud">
+      <div class="hud-top">
+        <div class="hud-bar health-bar">
+          <div id="health-fill" class="bar-fill"></div>
+          <span id="health-text">100 / 100</span>
+        </div>
+        <div class="hud-bar stamina-bar">
+          <div id="stamina-fill" class="bar-fill"></div>
+          <span id="stamina-text">Stamina</span>
+        </div>
+        <div class="hud-info">
+          <span id="level-display">Lv 1</span>
+          <span id="souls-display">Souls: 0</span>
+          <span id="weapon-display">Fire Axe</span>
+        </div>
+      </div>
+      <div id="layer-banner" class="layer-banner hidden"></div>
+      <div id="boss-health" class="boss-health hidden">
+        <span id="boss-name"></span>
+        <div class="boss-bar"><div id="boss-fill"></div></div>
+>>>>>>> 96eaff34f2fa5cdb2e5b4718dd7cbc677e254d96
       </div>
       <div class="hud-class-badge" id="hudClassBadge">WARRIOR</div>
     </div>
+<<<<<<< HEAD
 
     <div id="hud-center">
       <div class="hud-layer-eyebrow">LAYER</div>
@@ -401,10 +497,29 @@
         <div class="hslot-icon">🛡</div>
         <div class="hslot-label">BLOCK</div>
         <div class="hslot-cd" id="cdBlock"></div>
+=======
+    <div id="dialogue-box" class="dialogue-box hidden">
+      <div class="wisp-icon"></div>
+      <p id="dialogue-text"></p>
+      <button id="dialogue-next" class="btn btn-small">Continue</button>
+    </div>
+    <div id="skill-tree" class="skill-tree hidden">
+      <div class="skill-panel">
+        <h3>Skill Tree <span class="skill-points" id="skill-points">0 pts</span></h3>
+        <p class="skill-hint">Level up every 5 souls collected. Max 20 per trait.</p>
+        <div class="skill-rows" id="skill-rows"></div>
+        <button id="btn-close-skills" class="btn btn-secondary">Close (Tab)</button>
+>>>>>>> 96eaff34f2fa5cdb2e5b4718dd7cbc677e254d96
       </div>
     </div>
-  </div>
+    <div id="pause-menu" class="pause-menu hidden">
+      <h3>Paused</h3>
+      <button id="btn-resume" class="btn btn-primary">Resume</button>
+      <button id="btn-quit" class="btn btn-secondary">Quit to Menu</button>
+    </div>
+  </section>
 
+<<<<<<< HEAD
   <!-- BOSS HUD -->
   <div id="bossHud" class="hidden">
     <div class="boss-hud-inner">
@@ -453,5 +568,84 @@
 </div><!-- /screen-game -->
 
 <script src="script.js"></script>
+=======
+  <!-- Ending -->
+  <section id="ending" class="screen">
+    <div class="ending-content">
+      <h2>Victory</h2>
+      <p>With a final, decisive strike, the Overlord of Hell is defeated. As his spirit fades into ash, the entire realm begins to collapse.</p>
+      <p>The curse holding the souls of the trapped is permanently broken. Your warrior's soul ascends out of the darkness as the underworld crumbles into nothingness.</p>
+      <button id="btn-ending-menu" class="btn btn-primary">Return to Menu</button>
+    </div>
+  </section>
+
+  <!-- Settings Modal -->
+  <dialog id="modal-settings" class="modal">
+    <div class="modal-inner">
+      <h2>Settings</h2>
+      <div class="setting-row">
+        <label for="setting-brightness">Brightness</label>
+        <input type="range" id="setting-brightness" min="30" max="100" value="100">
+        <span id="brightness-value">100%</span>
+      </div>
+      <div class="setting-row">
+        <label for="setting-master">Master Volume</label>
+        <input type="range" id="setting-master" min="0" max="100" value="70">
+        <span id="master-value">70%</span>
+      </div>
+      <div class="setting-row">
+        <label for="setting-sfx">SFX Volume</label>
+        <input type="range" id="setting-sfx" min="0" max="100" value="80">
+        <span id="sfx-value">80%</span>
+      </div>
+      <div class="setting-row">
+        <label for="setting-music">Music Volume</label>
+        <input type="range" id="setting-music" min="0" max="100" value="50">
+        <span id="music-value">50%</span>
+      </div>
+      <div class="modal-actions">
+        <button id="btn-settings-close" class="btn btn-primary">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Keybinds Modal -->
+  <dialog id="modal-keybinds" class="modal">
+    <div class="modal-inner modal-wide">
+      <h2>Keybinds</h2>
+      <p class="modal-sub">Click a binding to reassign. Press Escape to cancel.</p>
+      <div id="keybind-list" class="keybind-list"></div>
+      <div class="modal-actions">
+        <button id="btn-keybinds-reset" class="btn btn-secondary">Reset Defaults</button>
+        <button id="btn-keybinds-close" class="btn btn-primary">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- About Modal -->
+  <dialog id="modal-about" class="modal">
+    <div class="modal-inner modal-wide">
+      <h2>About Infernal Descent</h2>
+      <div class="about-content">
+        <p>You are a fallen warrior whose soul has been dragged into the depths of Purgatory. Your spirit refuses to break. The only way out is <em>down</em> — through three layers of Hell, harvesting souls to grow stronger, until you face the Ruler of the Underworld himself.</p>
+        <h4>Act I — The Descent</h4>
+        <p>Awaken at the rusted iron gates. Complete the tutorial, defeat the beginner boss, and claim your tutorial weapon.</p>
+        <h4>Act II — The Trials of Hell</h4>
+        <ul>
+          <li><strong>Layer 1: The Gates of Despair</strong> — Grey labyrinth, Husks, and The Gatekeeper.</li>
+          <li><strong>Layer 2: The Fiery Catacombs</strong> — Molten rivers, Hellhounds, and Alpha Cerberus.</li>
+        </ul>
+        <h4>Act III — The Throne of Damnation</h4>
+        <p>Breach the obsidian gates. Cyclops, Gargoyles, and the final multi-phase battle against The Devil await.</p>
+        <p class="about-palette">Palette: Red · Orange · Black · White</p>
+      </div>
+      <div class="modal-actions">
+        <button id="btn-about-close" class="btn btn-primary">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="game.js"></script>
+>>>>>>> 96eaff34f2fa5cdb2e5b4718dd7cbc677e254d96
 </body>
 </html>
