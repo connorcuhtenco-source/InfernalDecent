@@ -1,651 +1,322 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<<<<<<< HEAD
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Infernal Descent — The Broken Curse</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css"/>
-=======
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Infernal Descent</title>
-  <link rel="stylesheet" href="style.css">
->>>>>>> 96eaff34f2fa5cdb2e5b4718dd7cbc677e254d96
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
-  <div id="brightness-overlay"></div>
+  <!-- MAIN MENU -->
+  <section id="screen-menu" class="screen active">
+    <canvas id="menuCanvas"></canvas>
+    <div class="cinematic-vignette"></div>
 
-<<<<<<< HEAD
-<!-- ████  LOADING SCREEN  ████ -->
-<div id="screen-loading" class="screen active">
-  <div class="loading-content">
-    <div class="loading-logo">INFERNAL DESCENT</div>
-    <div class="loading-bar-wrap"><div id="loadingBar" class="loading-bar"></div></div>
-    <div id="loadingText" class="loading-text">Forging the underworld...</div>
-  </div>
-</div>
+    <main class="landing">
+      <div class="title-mark">✦ THE BROKEN CURSE ✦</div>
 
-<!-- ████  MAIN MENU  ████ -->
-<div id="screen-menu" class="screen hidden">
-  <canvas id="menuCanvas" class="menu-bg-canvas"></canvas>
-  <div class="menu-vignette"></div>
-  <div class="menu-layout">
-    <div class="menu-logo-block">
-      <div class="menu-logo-pre">— INFERNAL —</div>
-      <div class="menu-logo-main">DESCENT</div>
-      <div class="menu-logo-sub">The Broken Curse</div>
-      <div class="menu-logo-line"></div>
-    </div>
-    <nav class="menu-nav">
-      <button class="mbtn mbtn-primary" id="btnPlay">
-        <span class="mbtn-icon">▶</span><span>Begin Descent</span>
-      </button>
-      <button class="mbtn" id="btnMenuStory">
-        <span class="mbtn-icon">📜</span><span>The Curse</span>
-      </button>
-      <button class="mbtn" id="btnMenuHowTo">
-        <span class="mbtn-icon">⚔</span><span>How to Play</span>
-      </button>
-      <button class="mbtn" id="btnMenuSettings">
-        <span class="mbtn-icon">⚙</span><span>Settings</span>
-      </button>
-      <button class="mbtn" id="btnMenuCredits">
-        <span class="mbtn-icon">✦</span><span>Credits</span>
-      </button>
-    </nav>
-    <div class="menu-footer">A Browser Dungeon Crawler &nbsp;·&nbsp; Pure HTML · CSS · JS</div>
-  </div>
-</div>
+      <h1 class="game-title">
+        INFERNAL
+        <span>DESCENT</span>
+      </h1>
 
-<!-- ████  STORY  ████ -->
-<div id="screen-story" class="screen hidden">
-  <div class="cinematic-bg"></div>
-  <div class="subscreen">
-    <div class="subscreen-eyebrow">LORE</div>
-    <h2 class="subscreen-title">The Broken Curse</h2>
-    <div class="story-scroll">
-      <p class="story-chapter">Act I — The Descent</p>
-      <p>You are a <strong>fallen warrior</strong> whose soul has been dragged into the depths of Purgatory. Your spirit, however, refuses to break.</p>
-      <p>Awakening at the rusted iron gates of the underworld, you discover a terrible truth — <em>the only way out is down.</em></p>
-      <p>To escape damnation, you must descend through the layers of Hell, harvest the souls of the damned, and destroy the source of the curse itself.</p>
-      <div class="story-divider">✦ ✦ ✦</div>
-      <p class="story-chapter">Layer I — Gates of Despair</p>
-      <p>A silent grey labyrinth guarded by wandering, mindless Husks. At its edge stands <strong>The Gatekeeper</strong> — a towering, armoured brute whose axe has shattered a thousand souls.</p>
-      <div class="story-divider">✦ ✦ ✦</div>
-      <p class="story-chapter">Layer II — Fiery Catacombs</p>
-      <p>A scorching landscape of shifting stone and molten rivers. Rabid Hellhounds hunt in packs. Deep within lies <strong>Alpha Cerberus</strong> — three heads, one purpose: your destruction.</p>
-      <div class="story-divider">✦ ✦ ✦</div>
-      <p class="story-chapter">Act III — Throne of Damnation</p>
-      <p>You breach the obsidian gates. The final gauntlet begins. <strong>The Overlord of Hell</strong> awaits on his throne of ash and bone.</p>
-      <div class="story-divider">✦ ✦ ✦</div>
-      <p class="story-chapter">The Ending</p>
-      <p><em>"I was never your enemy. I was your prison."</em></p>
-      <p>The curse shatters. Every trapped soul rises toward light. The warrior ascends — and finally escapes damnation as the underworld crumbles into nothingness.</p>
-    </div>
-    <button class="sbtn" id="btnStoryBack">← Back to Menu</button>
-  </div>
-</div>
+      <p class="landing-text">
+        A dark fantasy pixel dungeon crawler through Purgatory, ash ruins,
+        lava kennels, and the Devil’s throne.
+      </p>
 
-<!-- ████  HOW TO PLAY  ████ -->
-<div id="screen-howto" class="screen hidden">
-  <div class="cinematic-bg"></div>
-  <div class="subscreen">
-    <div class="subscreen-eyebrow">CONTROLS</div>
-    <h2 class="subscreen-title">How to Play</h2>
-    <div class="controls-wrap">
-      <div class="controls-col">
-        <div class="ctrl-group-label">Movement</div>
-        <div class="ctrl-row"><kbd>W A S D</kbd><span>Move</span></div>
-        <div class="ctrl-row"><kbd>SHIFT</kbd><span>Dash / Sprint (costs stamina)</span></div>
-        <div class="ctrl-group-label" style="margin-top:16px">Combat</div>
-        <div class="ctrl-row"><kbd>SPACE</kbd><span>Attack</span></div>
-        <div class="ctrl-row"><kbd>Q</kbd><span>Block (reduces damage)</span></div>
-        <div class="ctrl-row"><kbd>E</kbd><span>Special Ability</span></div>
-      </div>
-      <div class="controls-col">
-        <div class="ctrl-group-label">Interaction</div>
-        <div class="ctrl-row"><kbd>R</kbd><span>Interact / Open Skill Tree</span></div>
-        <div class="ctrl-row"><kbd>ESC</kbd><span>Pause</span></div>
-        <div class="ctrl-group-label" style="margin-top:16px">Systems</div>
-        <div class="ctrl-row"><span class="tip-icon">💀</span><span>5 Souls = 1 Level Up</span></div>
-        <div class="ctrl-row"><span class="tip-icon">⚔</span><span>Attacking enemies regens stamina</span></div>
-        <div class="ctrl-row"><span class="tip-icon">⚜</span><span>Checkpoints open the Skill Tree</span></div>
-        <div class="ctrl-row"><span class="tip-icon">🔥</span><span>Mini-bosses drop 15 souls</span></div>
-      </div>
-    </div>
-    <button class="sbtn" id="btnHowToBack">← Back to Menu</button>
-  </div>
-</div>
-
-<!-- ████  SETTINGS  ████ -->
-<div id="screen-settings" class="screen hidden">
-  <div class="cinematic-bg"></div>
-  <div class="subscreen">
-    <div class="subscreen-eyebrow">OPTIONS</div>
-    <h2 class="subscreen-title">Settings</h2>
-    <div class="settings-list">
-      <div class="setting-row">
-        <span class="setting-label">Brightness</span>
-        <div class="setting-right">
-          <input type="range" class="slider" id="sBrightness" min="40" max="160" value="100"/>
-          <span class="slider-val" id="sBrightnessVal">100%</span>
-        </div>
-      </div>
-      <div class="setting-row">
-        <span class="setting-label">Master Volume</span>
-        <div class="setting-right">
-          <input type="range" class="slider" id="sVolume" min="0" max="100" value="80"/>
-          <span class="slider-val" id="sVolumeVal">80%</span>
-        </div>
-      </div>
-      <div class="setting-row">
-        <span class="setting-label">SFX Volume</span>
-        <div class="setting-right">
-          <input type="range" class="slider" id="sSFX" min="0" max="100" value="80"/>
-          <span class="slider-val" id="sSFXVal">80%</span>
-        </div>
-      </div>
-      <div class="setting-row">
-        <span class="setting-label">Screen Shake</span>
-        <div class="setting-right">
-          <button class="tog active" id="togShake" data-key="screenShake">ON</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <span class="setting-label">Particles</span>
-        <div class="setting-right">
-          <button class="tog active" id="togParticles" data-key="particles">ON</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <span class="setting-label">Blood FX</span>
-        <div class="setting-right">
-          <button class="tog active" id="togBlood" data-key="blood">ON</button>
-        </div>
-      </div>
-    </div>
-    <button class="sbtn" id="btnSettingsBack">← Back to Menu</button>
-  </div>
-</div>
-
-<!-- ████  CREDITS  ████ -->
-<div id="screen-credits" class="screen hidden">
-  <div class="cinematic-bg"></div>
-  <div class="subscreen credits-subscreen">
-    <div class="subscreen-eyebrow">CREDITS</div>
-    <h2 class="subscreen-title">Infernal Descent</h2>
-    <div class="credits-scroll">
-      <div class="credit-block">
-        <div class="credit-role">Game Design & Development</div>
-        <div class="credit-name">Built with pure HTML, CSS & JavaScript</div>
-      </div>
-      <div class="credit-block">
-        <div class="credit-role">Engine</div>
-        <div class="credit-name">Custom game loop · Delta-time · OOP architecture</div>
-      </div>
-      <div class="credit-block">
-        <div class="credit-role">Art Direction</div>
-        <div class="credit-name">Dark fantasy · Red · Orange · Black · White</div>
-      </div>
-      <div class="credit-block">
-        <div class="credit-role">Typography</div>
-        <div class="credit-name">Cinzel · Crimson Text · Inter — Google Fonts</div>
-      </div>
-      <div class="credit-quote">"No external frameworks were harmed in the making of this game."</div>
-    </div>
-    <button class="sbtn" id="btnCreditsBack">← Back to Menu</button>
-  </div>
-</div>
-
-<!-- ████  CLASS SELECT  ████ -->
-<div id="screen-classselect" class="screen hidden">
-  <canvas id="classCanvas" class="menu-bg-canvas"></canvas>
-  <div class="menu-vignette"></div>
-  <div class="classselect-layout">
-    <div class="classselect-header">
-      <div class="classselect-eyebrow">CHOOSE YOUR FATE</div>
-      <div class="classselect-title">SOULS</div>
-      <div class="classselect-sub">Each path demands a different sacrifice</div>
-    </div>
-    <div class="class-cards" id="classCards">
-
-      <div class="ccard" id="ccard-warrior" data-class="warrior">
-        <div class="ccard-glow warrior-glow"></div>
-        <div class="ccard-inner">
-          <div class="ccard-emblem">🗡</div>
-          <div class="ccard-name">WARRIOR</div>
-          <div class="ccard-title">The Ironclad</div>
-          <div class="ccard-quote">"Strength forged in suffering."</div>
-          <div class="ccard-stats">
-            <div class="cstat"><span>Health</span><div class="cbar-w"><div class="cbar" style="--pct:90%;--col:#e74c3c"></div></div><span>90</span></div>
-            <div class="cstat"><span>Damage</span><div class="cbar-w"><div class="cbar" style="--pct:80%;--col:#e67e22"></div></div><span>80</span></div>
-            <div class="cstat"><span>Speed</span><div class="cbar-w"><div class="cbar" style="--pct:40%;--col:#f39c12"></div></div><span>40</span></div>
-            <div class="cstat"><span>Stamina</span><div class="cbar-w"><div class="cbar" style="--pct:60%;--col:#e67e22"></div></div><span>60</span></div>
-            <div class="cstat"><span>Magic</span><div class="cbar-w"><div class="cbar" style="--pct:5%;--col:#9b59b6"></div></div><span>5</span></div>
-          </div>
-          <div class="ccard-weapons">
-            <div class="cweapon-title">WEAPONS</div>
-            <div class="cweapon">🪓 Fire Axe <span class="cweapon-layer">Tutorial</span></div>
-            <div class="cweapon">⚔ Demon Greatsword <span class="cweapon-layer">Layer I</span></div>
-            <div class="cweapon">🔱 Devil's Greatspear <span class="cweapon-layer">Layer II</span></div>
-          </div>
-          <button class="ccard-btn" data-class="warrior">Select Warrior</button>
-        </div>
+      <div class="landing-actions">
+        <button id="btnPlay" class="btn primary">Begin Descent</button>
+        <button id="btnStory" class="btn">Story</button>
+        <button id="btnInstructions" class="btn">Instructions</button>
+        <button id="btnSettings" class="btn">Settings</button>
       </div>
 
-      <div class="ccard ccard-center" id="ccard-assassin" data-class="assassin">
-        <div class="ccard-glow assassin-glow"></div>
-        <div class="ccard-inner">
-          <div class="ccard-emblem">🗡</div>
-          <div class="ccard-name">ASSASSIN</div>
-          <div class="ccard-title">The Shadowblade</div>
-          <div class="ccard-quote">"Death before they see you."</div>
-          <div class="ccard-stats">
-            <div class="cstat"><span>Health</span><div class="cbar-w"><div class="cbar" style="--pct:40%;--col:#e74c3c"></div></div><span>40</span></div>
-            <div class="cstat"><span>Damage</span><div class="cbar-w"><div class="cbar" style="--pct:60%;--col:#e67e22"></div></div><span>60</span></div>
-            <div class="cstat"><span>Speed</span><div class="cbar-w"><div class="cbar" style="--pct:95%;--col:#f39c12"></div></div><span>95</span></div>
-            <div class="cstat"><span>Stamina</span><div class="cbar-w"><div class="cbar" style="--pct:85%;--col:#e67e22"></div></div><span>85</span></div>
-            <div class="cstat"><span>Magic</span><div class="cbar-w"><div class="cbar" style="--pct:5%;--col:#9b59b6"></div></div><span>5</span></div>
-          </div>
-          <div class="ccard-weapons">
-            <div class="cweapon-title">WEAPONS</div>
-            <div class="cweapon">🔪 Fire Dagger <span class="cweapon-layer">Tutorial</span></div>
-            <div class="cweapon">⚔ Demon Katana <span class="cweapon-layer">Layer I</span></div>
-            <div class="cweapon">⚔ Devil's Nagakiba <span class="cweapon-layer">Layer II</span></div>
-          </div>
-          <button class="ccard-btn" data-class="assassin">Select Assassin</button>
-        </div>
+      <div class="landing-features">
+        <span>3 Classes</span>
+        <span>Boss Phases</span>
+        <span>Skill Tree</span>
+        <span>Weapon Unlocks</span>
       </div>
-
-      <div class="ccard" id="ccard-mage" data-class="mage">
-        <div class="ccard-glow mage-glow"></div>
-        <div class="ccard-inner">
-          <div class="ccard-emblem">🔮</div>
-          <div class="ccard-name">MAGE</div>
-          <div class="ccard-title">The Cursed Scholar</div>
-          <div class="ccard-quote">"Hell's fire bent to your will."</div>
-          <div class="ccard-stats">
-            <div class="cstat"><span>Health</span><div class="cbar-w"><div class="cbar" style="--pct:35%;--col:#e74c3c"></div></div><span>35</span></div>
-            <div class="cstat"><span>Damage</span><div class="cbar-w"><div class="cbar" style="--pct:20%;--col:#e67e22"></div></div><span>20</span></div>
-            <div class="cstat"><span>Speed</span><div class="cbar-w"><div class="cbar" style="--pct:60%;--col:#f39c12"></div></div><span>60</span></div>
-            <div class="cstat"><span>Stamina</span><div class="cbar-w"><div class="cbar" style="--pct:55%;--col:#e67e22"></div></div><span>55</span></div>
-            <div class="cstat"><span>Magic</span><div class="cbar-w"><div class="cbar" style="--pct:95%;--col:#9b59b6"></div></div><span>95</span></div>
-          </div>
-          <div class="ccard-weapons">
-            <div class="cweapon-title">WEAPONS</div>
-            <div class="cweapon">🔥 Fire Gloves <span class="cweapon-layer">Tutorial</span></div>
-            <div class="cweapon">🪄 Demon Wand <span class="cweapon-layer">Layer I</span></div>
-            <div class="cweapon">🔮 Devil's Orb <span class="cweapon-layer">Layer II</span></div>
-          </div>
-          <button class="ccard-btn" data-class="mage">Select Mage</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<!-- ████  PAUSE  ████ -->
-<div id="screen-pause" class="screen overlay hidden">
-  <div class="modal">
-    <div class="modal-eyebrow">PAUSED</div>
-    <div class="modal-title">— Take a breath —</div>
-    <button class="mbtn mbtn-primary modal-btn" id="btnResume">▶ Resume</button>
-    <button class="mbtn modal-btn" id="btnPauseSkills">⚜ Skill Tree</button>
-    <button class="mbtn modal-btn" id="btnPauseRestart">↺ Restart</button>
-    <button class="mbtn modal-btn" id="btnPauseMenu">✕ Main Menu</button>
-  </div>
-</div>
-
-<!-- ████  SKILL TREE  ████ -->
-<div id="screen-skilltree" class="screen overlay hidden">
-  <div class="modal skilltree-modal">
-    <div class="modal-eyebrow">CHECKPOINT</div>
-    <div class="modal-title">⚜ Skill Tree ⚜</div>
-    <div class="st-meta">
-      <div class="st-pill">Level <span id="stLvl" class="st-val">1</span></div>
-      <div class="st-pill">💀 <span id="stSouls" class="st-val">0</span> Souls</div>
-      <div class="st-pill">Points: <span id="stPts" class="st-val">0</span></div>
-    </div>
-    <div id="stGrid" class="st-grid"></div>
-    <button class="mbtn mbtn-primary modal-btn" id="btnStClose">Continue Descent →</button>
-  </div>
-</div>
-
-<!-- ████  GAME OVER  ████ -->
-<div id="screen-gameover" class="screen overlay hidden">
-  <div class="modal go-modal">
-    <div class="go-skull">💀</div>
-    <div class="modal-eyebrow go-eyebrow">YOU HAVE FALLEN</div>
-    <div id="goCause" class="go-cause"></div>
-    <div id="goStats" class="end-stats"></div>
-    <button class="mbtn mbtn-danger modal-btn" id="btnGORestart">↺ Try Again</button>
-    <button class="mbtn modal-btn" id="btnGOMenu">✕ Main Menu</button>
-  </div>
-</div>
-
-<!-- ████  VICTORY  ████ -->
-<div id="screen-victory" class="screen overlay hidden">
-  <canvas id="victoryCanvas" class="menu-bg-canvas"></canvas>
-  <div class="modal vic-modal">
-    <div class="vic-icon">⚡</div>
-    <div class="modal-eyebrow vic-eyebrow">THE CURSE IS BROKEN</div>
-    <div class="vic-quote">"I was never your enemy. I was your prison."</div>
-    <div class="vic-body">The warrior's soul ascends. The trapped souls rise toward light. The underworld crumbles into nothingness.</div>
-    <div id="vicStats" class="end-stats"></div>
-    <button class="mbtn mbtn-primary modal-btn" id="btnVicPlay">▶ Play Again</button>
-    <button class="mbtn modal-btn" id="btnVicMenu">✕ Main Menu</button>
-  </div>
-</div>
-
-<!-- ████  GAME  ████ -->
-<div id="screen-game" class="screen hidden">
-
-  <!-- TOP HUD -->
-  <div id="hud-top">
-    <div id="hud-left">
-      <div class="hud-bars">
-        <div class="hbar-row">
-          <div class="hbar-label">HP</div>
-          <div class="hbar-track"><div id="hpBar" class="hbar hbar-hp"></div></div>
-          <div id="hpVal" class="hbar-val">100/100</div>
-        </div>
-        <div class="hbar-row">
-          <div class="hbar-label">ST</div>
-          <div class="hbar-track"><div id="stBar" class="hbar hbar-st"></div></div>
-          <div id="stVal" class="hbar-val">50/50</div>
-        </div>
-=======
-  <!-- Landing Page -->
-  <section id="landing" class="screen active">
-    <div class="landing-bg"></div>
-    <div class="landing-content">
-      <h1 class="game-title">Infernal Descent</h1>
-      <p class="tagline">The only way out is down.</p>
-      <nav class="landing-nav">
-        <button id="btn-play" class="btn btn-primary btn-lg">Play</button>
-        <button id="btn-settings" class="btn btn-secondary">Settings</button>
-        <button id="btn-keybinds" class="btn btn-secondary">Keybinds</button>
-        <button id="btn-about" class="btn btn-secondary">About</button>
-      </nav>
-    </div>
-    <footer class="landing-footer">A fallen warrior's journey through the depths of Purgatory</footer>
+    </main>
   </section>
 
-  <!-- Class Selection -->
-  <section id="class-select" class="screen">
-    <div class="class-header">
-      <h2>Infernal Descent</h2>
-      <p class="souls-label">SOULS</p>
-      <p class="class-prompt">Choose your path. Your class defines how you survive the descent.</p>
-    </div>
-    <div class="class-cards">
-      <article class="class-card" data-class="assassin">
-        <h3>The Assassin</h3>
-        <p class="class-desc">Swift and deadly. Strike fast, dodge faster.</p>
-        <ul class="stat-list">
-          <li><span>Speed</span><span class="stat-high">High</span></li>
-          <li><span>Stamina</span><span class="stat-med">Medium</span></li>
-          <li><span>Health</span><span class="stat-low">Low</span></li>
-          <li><span>Attack</span><span class="stat-med">Medium</span></li>
-        </ul>
-        <p class="weapon-preview">Fire Dagger → Demon Katana → Devil's Nagakiba</p>
-      </article>
-      <article class="class-card" data-class="warrior">
-        <h3>The Warrior</h3>
-        <p class="class-desc">Unbreakable will. Absorb punishment, deliver devastation.</p>
-        <ul class="stat-list">
-          <li><span>Speed</span><span class="stat-low">Low</span></li>
-          <li><span>Stamina</span><span class="stat-med">Medium</span></li>
-          <li><span>Health</span><span class="stat-high">High</span></li>
-          <li><span>Attack</span><span class="stat-high">High</span></li>
-        </ul>
-        <p class="weapon-preview">Fire Axe → Demon Greatsword → Devil's Greatspear</p>
-      </article>
-      <article class="class-card" data-class="mage">
-        <h3>The Mage</h3>
-        <p class="class-desc">Arcane fury from the void. Destroy from afar.</p>
-        <ul class="stat-list">
-          <li><span>Magic</span><span class="stat-high">High</span></li>
-          <li><span>Speed</span><span class="stat-med">Medium</span></li>
-          <li><span>Health</span><span class="stat-low">Low</span></li>
-          <li><span>Stamina</span><span class="stat-med">Medium</span></li>
-        </ul>
-        <p class="weapon-preview">Fire Gloves → Demon Wand → Devil's Orb</p>
-      </article>
-    </div>
-    <button id="btn-back-landing" class="btn btn-ghost">← Back</button>
+  <!-- STORY -->
+  <section id="screen-story" class="screen hidden">
+    <div class="page-bg"></div>
+
+    <main class="panel story-panel">
+      <p class="eyebrow">STORY</p>
+      <h2>The Only Way Out Is Down</h2>
+
+      <p>
+        You are a fallen warrior whose soul has been dragged into Purgatory.
+        Your spirit refuses to break.
+      </p>
+
+      <p>
+        To escape damnation, you must descend through three layers of Hell,
+        harvest souls, claim cursed weapons, and destroy the source of the curse.
+      </p>
+
+      <p>
+        Defeat the Gate Keeper, Alpha Cerberus, and finally the Devil himself.
+        Break the curse and free every trapped soul.
+      </p>
+
+      <button class="btn back-menu">Back</button>
+    </main>
   </section>
 
-  <!-- Game -->
-  <section id="game-screen" class="screen">
-    <canvas id="game-canvas"></canvas>
-    <div id="hud">
-      <div class="hud-top">
-        <div class="hud-bar health-bar">
-          <div id="health-fill" class="bar-fill"></div>
-          <span id="health-text">100 / 100</span>
-        </div>
-        <div class="hud-bar stamina-bar">
-          <div id="stamina-fill" class="bar-fill"></div>
-          <span id="stamina-text">Stamina</span>
-        </div>
-        <div class="hud-info">
-          <span id="level-display">Lv 1</span>
-          <span id="souls-display">Souls: 0</span>
-          <span id="weapon-display">Fire Axe</span>
-        </div>
-      </div>
-      <div id="layer-banner" class="layer-banner hidden"></div>
-      <div id="boss-health" class="boss-health hidden">
-        <span id="boss-name"></span>
-        <div class="boss-bar"><div id="boss-fill"></div></div>
->>>>>>> 96eaff34f2fa5cdb2e5b4718dd7cbc677e254d96
-      </div>
-      <div class="hud-class-badge" id="hudClassBadge">WARRIOR</div>
-    </div>
-<<<<<<< HEAD
+  <!-- INSTRUCTIONS PAGE -->
+  <section id="screen-instructions" class="screen hidden">
+    <div class="page-bg"></div>
 
-    <div id="hud-center">
-      <div class="hud-layer-eyebrow">LAYER</div>
-      <div id="hudLayerNum" class="hud-layer-num">I</div>
-      <div id="hudLayerName" class="hud-layer-name">Gates of Despair</div>
-    </div>
+    <main class="panel instructions-panel">
+      <p class="eyebrow">INSTRUCTIONS</p>
+      <h2>How To Survive</h2>
 
-    <div id="hud-right">
-      <div class="hud-souls-display">
-        <span class="hud-souls-icon">💀</span>
-        <span id="hudSouls" class="hud-souls-val">0</span>
-      </div>
-      <div class="hud-level-display">LV <span id="hudLv" class="hud-lv-num">1</span></div>
-      <div class="hud-xp-wrap">
-        <div id="hudXp" class="hud-xp-bar"></div>
-      </div>
-    </div>
-  </div>
+      <div class="instructions-grid">
+        <div class="instruction-card">
+          <h3>Movement</h3>
+          <p><kbd>WASD</kbd> Move around the dungeon</p>
+          <p><kbd>SHIFT</kbd> Dash / sprint using stamina</p>
+        </div>
 
-  <!-- BOTTOM HUD -->
-  <div id="hud-bottom">
-    <div id="hud-weapon-panel">
-      <div class="hwp-label">WEAPON</div>
-      <div id="hwpName" class="hwp-name">Fire Axe</div>
-    </div>
-    <div id="hud-slots">
-      <div class="hslot" id="hslot-atk">
-        <div class="hslot-key">SPC</div>
-        <div class="hslot-icon">⚔</div>
-        <div class="hslot-label">ATTACK</div>
-        <div class="hslot-cd" id="cdAtk"></div>
+        <div class="instruction-card">
+          <h3>Combat</h3>
+          <p><kbd>SPACE</kbd> Attack with your weapon</p>
+          <p><kbd>E</kbd> Use your special ability</p>
+        </div>
+
+        <div class="instruction-card">
+          <h3>Defense</h3>
+          <p><kbd>Q</kbd> Hold to block with your shield</p>
+          <p>Blocking reduces damage but drains stamina.</p>
+        </div>
+
+        <div class="instruction-card">
+          <h3>Progression</h3>
+          <p><kbd>R</kbd> Open the skill tree</p>
+          <p>Every 5 souls gives 1 skill point.</p>
+        </div>
       </div>
-      <div class="hslot" id="hslot-dash">
-        <div class="hslot-key">SHF</div>
-        <div class="hslot-icon">💨</div>
-        <div class="hslot-label">DASH</div>
-        <div class="hslot-cd" id="cdDash"></div>
-      </div>
-      <div class="hslot" id="hslot-special">
-        <div class="hslot-key">E</div>
-        <div class="hslot-icon">⚡</div>
-        <div class="hslot-label">SPECIAL</div>
-        <div class="hslot-cd" id="cdSpecial"></div>
-      </div>
-      <div class="hslot" id="hslot-block">
-        <div class="hslot-key">Q</div>
-        <div class="hslot-icon">🛡</div>
-        <div class="hslot-label">BLOCK</div>
-        <div class="hslot-cd" id="cdBlock"></div>
-=======
-    <div id="dialogue-box" class="dialogue-box hidden">
-      <div class="wisp-icon"></div>
-      <p id="dialogue-text"></p>
-      <button id="dialogue-next" class="btn btn-small">Continue</button>
-    </div>
-    <div id="skill-tree" class="skill-tree hidden">
-      <div class="skill-panel">
-        <h3>Skill Tree <span class="skill-points" id="skill-points">0 pts</span></h3>
-        <p class="skill-hint">Level up every 5 souls collected. Max 20 per trait.</p>
-        <div class="skill-rows" id="skill-rows"></div>
-        <button id="btn-close-skills" class="btn btn-secondary">Close (Tab)</button>
->>>>>>> 96eaff34f2fa5cdb2e5b4718dd7cbc677e254d96
-      </div>
-    </div>
-    <div id="pause-menu" class="pause-menu hidden">
-      <h3>Paused</h3>
-      <button id="btn-resume" class="btn btn-primary">Resume</button>
-      <button id="btn-quit" class="btn btn-secondary">Quit to Menu</button>
-    </div>
+
+      <button class="btn back-menu">Back</button>
+    </main>
   </section>
 
-<<<<<<< HEAD
-  <!-- BOSS HUD -->
-  <div id="bossHud" class="hidden">
-    <div class="boss-hud-inner">
-      <div id="bossHudName" class="boss-hud-name">The Gatekeeper</div>
-      <div class="boss-bar-wrap">
-        <div id="bossBarFill" class="boss-bar-fill"></div>
-        <div id="bossBarShimmer" class="boss-bar-shimmer"></div>
+  <!-- SETTINGS -->
+  <section id="screen-settings" class="screen hidden">
+    <div class="page-bg"></div>
+
+    <main class="panel small">
+      <p class="eyebrow">SETTINGS</p>
+      <h2>Options</h2>
+
+      <label class="setting-row">
+        Brightness
+        <input id="brightnessSlider" type="range" min="60" max="140" value="100" />
+      </label>
+
+      <label class="setting-row">
+        Screen Shake
+        <input id="shakeToggle" type="checkbox" checked />
+      </label>
+
+      <label class="setting-row">
+        Particles
+        <input id="particleToggle" type="checkbox" checked />
+      </label>
+
+      <button class="btn back-menu">Back</button>
+    </main>
+  </section>
+
+  <!-- CLASS SELECT -->
+  <section id="screen-class" class="screen hidden">
+    <canvas id="classCanvas"></canvas>
+    <div class="cinematic-vignette"></div>
+
+    <main class="class-page">
+      <p class="eyebrow">CHOOSE YOUR SOUL</p>
+      <h2>Pick Your Class</h2>
+
+      <div class="class-grid">
+        <button class="class-card warrior-card" data-class="warrior">
+          <div class="class-preview warrior-preview"></div>
+          <h3>Warrior</h3>
+          <p>High health, heavy damage, strong blocking.</p>
+          <small>Fire Axe → Demon Greatsword → Devil’s Greatspear</small>
+        </button>
+
+        <button class="class-card assassin-card" data-class="assassin">
+          <div class="class-preview assassin-preview"></div>
+          <h3>Assassin</h3>
+          <p>Fast movement, high stamina, quick strikes.</p>
+          <small>Fire Dagger → Demon Katana → Devil’s Nagakiba</small>
+        </button>
+
+        <button class="class-card mage-card" data-class="mage">
+          <div class="class-preview mage-preview"></div>
+          <h3>Mage</h3>
+          <p>Ranged magic, powerful spells, low health.</p>
+          <small>Fire Gloves → Demon Wand → Devil’s Orb</small>
+        </button>
       </div>
-      <div id="bossHudPhase" class="boss-hud-phase">Phase I — Axe Strikes</div>
-    </div>
-  </div>
+    </main>
+  </section>
 
-  <!-- INTERACT PROMPT -->
-  <div id="interactPrompt" class="interact-prompt hidden">
-    <kbd class="ikey">R</kbd> <span id="interactTxt">interact</span>
-  </div>
+  <!-- GAME -->
+  <section id="screen-game" class="screen hidden">
+    <canvas id="gameCanvas"></canvas>
 
-  <!-- ROOM BANNER -->
-  <div id="roomBanner" class="room-banner hidden"></div>
+    <div id="gameVignette"></div>
+    <div id="brightnessOverlay"></div>
+    <div id="damageLayer"></div>
 
-  <!-- NOTIFICATION -->
-  <div id="notification" class="notification hidden"></div>
+    <header id="hudTop">
+      <div class="hud-card player-hud">
+        <div class="bar-line">
+          <span>HP</span>
+          <div class="bar-track"><div id="hpBar" class="bar hp"></div></div>
+          <b id="hpText">100/100</b>
+        </div>
 
-  <!-- WISP DIALOGUE -->
-  <div id="wispBox" class="wisp-box hidden">
-    <div class="wisp-header">
-      <div class="wisp-orb">🔵</div>
-      <div class="wisp-speaker">Ignis — The Guide Wisp</div>
-    </div>
-    <div id="wispText" class="wisp-text">...</div>
-    <button id="wispNext" class="wisp-next-btn">Continue <span>→</span></button>
-  </div>
+        <div class="bar-line">
+          <span>ST</span>
+          <div class="bar-track"><div id="staminaBar" class="bar stamina"></div></div>
+          <b id="staminaText">50/50</b>
+        </div>
 
-  <!-- CANVAS -->
-  <canvas id="gameCanvas"></canvas>
+        <div id="classBadge">WARRIOR</div>
+      </div>
 
-  <!-- DAMAGE NUMBERS -->
-  <div id="dmgLayer"></div>
+      <div class="hud-card layer-hud">
+        <span class="tiny-label">LAYER</span>
+        <h3 id="layerTitle">Tutorial</h3>
+        <p id="objectiveText">Defeat the Hollow Warden</p>
+      </div>
 
-  <!-- EFFECTS OVERLAY -->
-  <div id="fxOverlay"></div>
+      <div class="hud-card stats-hud">
+        <div>💀 <b id="soulText">0</b></div>
+        <div>LV <b id="levelText">1</b></div>
+        <div>SP <b id="pointText">0</b></div>
+      </div>
+    </header>
 
-  <!-- BRIGHTNESS -->
-  <div id="brightnessOverlay"></div>
+    <section id="bossHud" class="hidden">
+      <h3 id="bossName">Boss</h3>
+      <div class="boss-track"><div id="bossBar"></div></div>
+      <p id="bossPhase">Phase I</p>
+    </section>
 
-</div><!-- /screen-game -->
+    <footer id="hudBottom">
+      <div class="weapon-card">
+        <span class="tiny-label">WEAPON</span>
+        <h3 id="weaponText">Fire Axe</h3>
+      </div>
 
-<script src="script.js"></script>
-=======
-  <!-- Ending -->
-  <section id="ending" class="screen">
-    <div class="ending-content">
+      <div class="ability-dock">
+        <div class="ability"><kbd>SPC</kbd><span>Attack</span></div>
+        <div class="ability"><kbd>SHF</kbd><span>Dash</span></div>
+        <div class="ability"><kbd>E</kbd><span>Special</span></div>
+        <div class="ability"><kbd>Q</kbd><span>Block</span></div>
+      </div>
+    </footer>
+
+    <div id="toast" class="hidden"></div>
+  </section>
+
+  <!-- PAUSE -->
+  <section id="screen-pause" class="screen overlay hidden">
+    <main class="panel small">
+      <p class="eyebrow">PAUSED</p>
+      <h2>Take A Breath</h2>
+
+      <button id="btnResume" class="btn primary">Resume</button>
+      <button id="btnSkillTree" class="btn">Skill Tree</button>
+      <button id="btnRestart" class="btn">Restart</button>
+      <button id="btnMenuFromPause" class="btn">Main Menu</button>
+    </main>
+  </section>
+
+  <!-- SKILL TREE -->
+  <section id="screen-skills" class="screen overlay hidden">
+    <main class="panel skill-panel">
+      <p class="eyebrow">SKILL TREE</p>
+      <h2>Spend Your Souls</h2>
+
+      <div id="skillInfo">Skill Points: 0</div>
+
+      <div class="skill-grid">
+        <button class="skill-btn" data-skill="health">
+          <b>Health</b>
+          <span>+10 Max HP</span>
+        </button>
+
+        <button class="skill-btn" data-skill="damage">
+          <b>Damage</b>
+          <span>+5 Physical Damage</span>
+        </button>
+
+        <button class="skill-btn" data-skill="magic">
+          <b>Magic</b>
+          <span>+5 Magic Damage</span>
+        </button>
+
+        <button class="skill-btn" data-skill="speed">
+          <b>Speed</b>
+          <span>+10 Movement Speed</span>
+        </button>
+
+        <button class="skill-btn" data-skill="stamina">
+          <b>Stamina</b>
+          <span>+15 Max Stamina</span>
+        </button>
+      </div>
+
+      <button id="btnCloseSkills" class="btn primary">Continue</button>
+    </main>
+  </section>
+
+  <!-- GAME OVER -->
+  <section id="screen-gameover" class="screen overlay hidden">
+    <main class="panel small">
+      <p class="eyebrow danger">YOU HAVE FALLEN</p>
+      <h2>Game Over</h2>
+      <p id="gameoverStats"></p>
+
+      <button id="btnTryAgain" class="btn primary">Try Again</button>
+      <button id="btnGameOverMenu" class="btn">Main Menu</button>
+    </main>
+  </section>
+
+  <!-- VICTORY -->
+  <section id="screen-victory" class="screen overlay hidden">
+    <canvas id="victoryCanvas"></canvas>
+
+    <main class="panel victory-panel">
+      <p class="eyebrow">THE CURSE IS BROKEN</p>
       <h2>Victory</h2>
-      <p>With a final, decisive strike, the Overlord of Hell is defeated. As his spirit fades into ash, the entire realm begins to collapse.</p>
-      <p>The curse holding the souls of the trapped is permanently broken. Your warrior's soul ascends out of the darkness as the underworld crumbles into nothingness.</p>
-      <button id="btn-ending-menu" class="btn btn-primary">Return to Menu</button>
-    </div>
+
+      <p>The Devil falls. The throne cracks. The trapped souls rise into light.</p>
+      <p>Your soul is finally free.</p>
+
+      <p id="victoryStats"></p>
+
+      <button id="btnPlayAgain" class="btn primary">Play Again</button>
+      <button id="btnVictoryMenu" class="btn">Main Menu</button>
+    </main>
   </section>
 
-  <!-- Settings Modal -->
-  <dialog id="modal-settings" class="modal">
-    <div class="modal-inner">
-      <h2>Settings</h2>
-      <div class="setting-row">
-        <label for="setting-brightness">Brightness</label>
-        <input type="range" id="setting-brightness" min="30" max="100" value="100">
-        <span id="brightness-value">100%</span>
-      </div>
-      <div class="setting-row">
-        <label for="setting-master">Master Volume</label>
-        <input type="range" id="setting-master" min="0" max="100" value="70">
-        <span id="master-value">70%</span>
-      </div>
-      <div class="setting-row">
-        <label for="setting-sfx">SFX Volume</label>
-        <input type="range" id="setting-sfx" min="0" max="100" value="80">
-        <span id="sfx-value">80%</span>
-      </div>
-      <div class="setting-row">
-        <label for="setting-music">Music Volume</label>
-        <input type="range" id="setting-music" min="0" max="100" value="50">
-        <span id="music-value">50%</span>
-      </div>
-      <div class="modal-actions">
-        <button id="btn-settings-close" class="btn btn-primary">Done</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- Keybinds Modal -->
-  <dialog id="modal-keybinds" class="modal">
-    <div class="modal-inner modal-wide">
-      <h2>Keybinds</h2>
-      <p class="modal-sub">Click a binding to reassign. Press Escape to cancel.</p>
-      <div id="keybind-list" class="keybind-list"></div>
-      <div class="modal-actions">
-        <button id="btn-keybinds-reset" class="btn btn-secondary">Reset Defaults</button>
-        <button id="btn-keybinds-close" class="btn btn-primary">Done</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- About Modal -->
-  <dialog id="modal-about" class="modal">
-    <div class="modal-inner modal-wide">
-      <h2>About Infernal Descent</h2>
-      <div class="about-content">
-        <p>You are a fallen warrior whose soul has been dragged into the depths of Purgatory. Your spirit refuses to break. The only way out is <em>down</em> — through three layers of Hell, harvesting souls to grow stronger, until you face the Ruler of the Underworld himself.</p>
-        <h4>Act I — The Descent</h4>
-        <p>Awaken at the rusted iron gates. Complete the tutorial, defeat the beginner boss, and claim your tutorial weapon.</p>
-        <h4>Act II — The Trials of Hell</h4>
-        <ul>
-          <li><strong>Layer 1: The Gates of Despair</strong> — Grey labyrinth, Husks, and The Gatekeeper.</li>
-          <li><strong>Layer 2: The Fiery Catacombs</strong> — Molten rivers, Hellhounds, and Alpha Cerberus.</li>
-        </ul>
-        <h4>Act III — The Throne of Damnation</h4>
-        <p>Breach the obsidian gates. Cyclops, Gargoyles, and the final multi-phase battle against The Devil await.</p>
-        <p class="about-palette">Palette: Red · Orange · Black · White</p>
-      </div>
-      <div class="modal-actions">
-        <button id="btn-about-close" class="btn btn-primary">Close</button>
-      </div>
-    </div>
-  </dialog>
-
-  <script src="game.js"></script>
->>>>>>> 96eaff34f2fa5cdb2e5b4718dd7cbc677e254d96
+  <script src="sprites.js"></script>
+  <script src="levels.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
