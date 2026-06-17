@@ -924,3 +924,44 @@ kbd {
     font-size: 10px;
   }
 }
+
+#gameCanvas {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+@media (max-height: 760px) {
+  #hudTop {
+    transform: scale(0.88);
+    transform-origin: top left;
+    right: -120px;
+  }
+
+  #hudBottom {
+    transform: scale(0.88);
+    transform-origin: bottom left;
+    right: -120px;
+  }
+
+  #bossHud {
+    top: 86px;
+    transform: translateX(-50%) scale(0.9);
+  }
+}
+
+@media (max-width: 900px) {
+  #hudTop {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-hud {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+  }
+
+  #bossHud {
+    top: 220px;
+  }
+}

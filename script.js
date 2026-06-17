@@ -69,6 +69,10 @@ function distance(ax, ay, bx, by) {
   return Math.hypot(bx - ax, by - ay);
 }
 
+function touching(a, b, range = 24) {
+  return distance(a.x, a.y, b.x, b.y) <= range;
+}
+
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(screen => {
     screen.classList.add("hidden");
@@ -99,7 +103,7 @@ function toast(text) {
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => {
     box.classList.add("hidden");
-  }, 2100);
+  }, 1600);
 }
 
 function damageNumber(x, y, value, crit = false) {
@@ -494,7 +498,6 @@ class Player {
 
     this.kills = 0;
     this.projectiles = [];
-
     this.frame = 0;
   }
 
@@ -542,9 +545,7 @@ class Player {
       this.stamina = clamp(this.stamina - 30 * s, 0, this.maxStamina);
     }
 
-    if (this.blocking) {
-      speed *= 0.55;
-    }
+    if (this.blocking) speed *= 0.55;
 
     const nx = this.x + mx * speed * s;
     const ny = this.y + my * speed * s;
@@ -557,10 +558,7 @@ class Player {
     if (once("KeyR")) game.openSkills();
     if (once("Escape")) game.pause();
 
-    for (const p of this.projectiles) {
-      p.update(dt, world);
-    }
-
+    for (const p of this.projectiles) p.update(dt, world);
     this.projectiles = this.projectiles.filter(p => !p.dead);
   }
 
@@ -576,7 +574,6 @@ class Player {
         : weapon.damage + this.baseDamage;
 
     const crit = Math.random() < 0.12;
-
     if (crit) baseDamage *= 1.85;
 
     const damage = Math.round(baseDamage);
@@ -596,44 +593,24 @@ class Player {
       );
     }
 
-    const hitRange = weapon.range;
-
     for (const enemy of world.enemies) {
       if (enemy.dead) continue;
 
-      const d = distance(this.x, this.y, enemy.x, enemy.y);
-
-      if (d <= hitRange) {
+      if (distance(this.x, this.y, enemy.x, enemy.y) <= weapon.range) {
         enemy.takeDamage(damage);
-
         this.stamina = clamp(this.stamina + 8, 0, this.maxStamina);
 
-        damageNumber(
-          enemy.x - world.cameraX,
-          enemy.y - world.cameraY,
-          damage,
-          crit
-        );
-
+        damageNumber(enemy.x - world.cameraX, enemy.y - world.cameraY, damage, crit);
         world.particles.burst(enemy.x, enemy.y, this.color, 10);
       }
     }
 
     if (world.boss && !world.boss.dead) {
-      const d = distance(this.x, this.y, world.boss.x, world.boss.y);
-
-      if (d <= hitRange) {
+      if (distance(this.x, this.y, world.boss.x, world.boss.y) <= weapon.range) {
         world.boss.takeDamage(damage);
-
         this.stamina = clamp(this.stamina + 10, 0, this.maxStamina);
 
-        damageNumber(
-          world.boss.x - world.cameraX,
-          world.boss.y - world.cameraY,
-          damage,
-          crit
-        );
-
+        damageNumber(world.boss.x - world.cameraX, world.boss.y - world.cameraY, damage, crit);
         world.particles.burst(world.boss.x, world.boss.y, this.color, 14);
       }
     }
@@ -654,43 +631,21 @@ class Player {
     for (const enemy of world.enemies) {
       if (enemy.dead) continue;
 
-      const d = distance(this.x, this.y, enemy.x, enemy.y);
-
-      if (d <= radius) {
-        const damage = Math.round(
-          (weapon.damage + this.baseDamage + this.baseMagic) * 1.45
-        );
+      if (distance(this.x, this.y, enemy.x, enemy.y) <= radius) {
+        const damage = Math.round((weapon.damage + this.baseDamage + this.baseMagic) * 1.45);
 
         enemy.takeDamage(damage);
-
-        damageNumber(
-          enemy.x - world.cameraX,
-          enemy.y - world.cameraY,
-          damage,
-          true
-        );
-
+        damageNumber(enemy.x - world.cameraX, enemy.y - world.cameraY, damage, true);
         world.particles.burst(enemy.x, enemy.y, this.color, 22);
       }
     }
 
     if (world.boss && !world.boss.dead) {
-      const d = distance(this.x, this.y, world.boss.x, world.boss.y);
-
-      if (d <= radius) {
-        const damage = Math.round(
-          (weapon.damage + this.baseDamage + this.baseMagic) * 1.3
-        );
+      if (distance(this.x, this.y, world.boss.x, world.boss.y) <= radius) {
+        const damage = Math.round((weapon.damage + this.baseDamage + this.baseMagic) * 1.3);
 
         world.boss.takeDamage(damage);
-
-        damageNumber(
-          world.boss.x - world.cameraX,
-          world.boss.y - world.cameraY,
-          damage,
-          true
-        );
-
+        damageNumber(world.boss.x - world.cameraX, world.boss.y - world.cameraY, damage, true);
         world.particles.burst(world.boss.x, world.boss.y, this.color, 28);
       }
     }
@@ -720,9 +675,7 @@ class Player {
       game.world.particles.burst(this.x, this.y, this.blocking ? "#9fdcff" : "#ff2d1c", 18);
     }
 
-    if (this.hp <= 0) {
-      game.gameOver();
-    }
+    if (this.hp <= 0) game.gameOver();
   }
 
   addSouls(amount) {
@@ -767,17 +720,9 @@ class Player {
       this.hp += 10;
     }
 
-    if (skill === "damage") {
-      this.baseDamage += 5;
-    }
-
-    if (skill === "magic") {
-      this.baseMagic += 5;
-    }
-
-    if (skill === "speed") {
-      this.baseSpeed += 10;
-    }
+    if (skill === "damage") this.baseDamage += 5;
+    if (skill === "magic") this.baseMagic += 5;
+    if (skill === "speed") this.baseSpeed += 10;
 
     if (skill === "stamina") {
       this.maxStamina += 15;
@@ -792,19 +737,11 @@ class Player {
       ctx.globalAlpha = 0.45;
     }
 
-    SpriteRenderer.drawPlayer(
-      ctx,
-      this.x - camX,
-      this.y - camY,
-      this,
-      this.frame
-    );
+    SpriteRenderer.drawPlayer(ctx, this.x - camX, this.y - camY, this, this.frame);
 
     ctx.globalAlpha = 1;
 
-    for (const p of this.projectiles) {
-      p.draw(ctx, camX, camY);
-    }
+    for (const p of this.projectiles) p.draw(ctx, camX, camY);
   }
 }
 
@@ -850,16 +787,10 @@ class Projectile {
     for (const enemy of world.enemies) {
       if (enemy.dead) continue;
 
-      if (distance(this.x, this.y, enemy.x, enemy.y) < 25) {
+      if (touching(this, enemy, 25)) {
         enemy.takeDamage(this.damage);
 
-        damageNumber(
-          enemy.x - world.cameraX,
-          enemy.y - world.cameraY,
-          this.damage,
-          this.crit
-        );
-
+        damageNumber(enemy.x - world.cameraX, enemy.y - world.cameraY, this.damage, this.crit);
         world.particles.burst(enemy.x, enemy.y, this.color, 12);
 
         this.dead = true;
@@ -867,20 +798,10 @@ class Projectile {
       }
     }
 
-    if (
-      world.boss &&
-      !world.boss.dead &&
-      distance(this.x, this.y, world.boss.x, world.boss.y) < 44
-    ) {
+    if (world.boss && !world.boss.dead && touching(this, world.boss, 44)) {
       world.boss.takeDamage(this.damage);
 
-      damageNumber(
-        world.boss.x - world.cameraX,
-        world.boss.y - world.cameraY,
-        this.damage,
-        this.crit
-      );
-
+      damageNumber(world.boss.x - world.cameraX, world.boss.y - world.cameraY, this.damage, this.crit);
       world.particles.burst(world.boss.x, world.boss.y, this.color, 14);
 
       this.dead = true;
@@ -960,7 +881,7 @@ class Enemy {
 
     if (this.type === "cyclops") {
       if (d < 330 && this.cooldown <= 0) {
-        player.takeDamage(this.damage === 15 ? 20 : this.damage);
+        player.takeDamage(20);
 
         world.particles.line(this.x, this.y, player.x, player.y, "#ff2d1c");
         toast("EYE BEAM");
@@ -974,21 +895,20 @@ class Enemy {
 
       this.move(world, dx, dy, diveSpeed, dt);
 
-      if (d < 38 && this.cooldown <= 0) {
+      if (touching(this, player, 24) && this.cooldown <= 0) {
         player.takeDamage(this.damage);
         toast("DIVE STRIKE");
         this.cooldown = 1450;
       }
     } else {
       let speed = this.speed;
-
       if (this.type === "hound") speed *= 1.18;
 
       this.move(world, dx, dy, speed, dt);
 
-      if (d < 38 && this.cooldown <= 0) {
+      if (touching(this, player, 24) && this.cooldown <= 0) {
         player.takeDamage(this.damage);
-        this.cooldown = this.type === "hound" ? 700 : 1100;
+        this.cooldown = this.type === "hound" ? 750 : 1150;
       }
     }
   }
@@ -1038,7 +958,6 @@ class Boss {
     const data = BOSS_TYPES[name];
 
     this.name = name;
-
     this.x = x;
     this.y = y;
 
@@ -1100,9 +1019,7 @@ class Boss {
       if (!world.collides(this.x, ny)) this.y = ny;
     }
 
-    if (this.cooldown <= 0) {
-      this.attack(player, world);
-    }
+    if (this.cooldown <= 0) this.attack(player, world);
   }
 
   updateBossHUD() {
@@ -1120,10 +1037,10 @@ class Boss {
   attack(player, world) {
     if (this.name === "The Gate Keeper") {
       if (Math.random() > 0.5) {
-        player.takeDamage(this.phase2 ? 35 : 20);
+        if (touching(this, player, 50)) player.takeDamage(this.phase2 ? 35 : 20);
         toast("RUSH DOWN");
       } else {
-        player.takeDamage(this.phase2 ? 25 : 15);
+        if (touching(this, player, 48)) player.takeDamage(this.phase2 ? 25 : 15);
         toast("FIST SWING");
       }
 
@@ -1137,7 +1054,7 @@ class Boss {
       }
 
       if (move === 1) {
-        player.takeDamage(25);
+        if (touching(this, player, 58)) player.takeDamage(25);
         toast("TRIPLE BITE");
       }
 
@@ -1152,7 +1069,7 @@ class Boss {
       const move = Math.floor(Math.random() * (this.phase2 ? 3 : 2));
 
       if (move === 0) {
-        player.takeDamage(20);
+        if (touching(this, player, 52)) player.takeDamage(20);
         toast("PITCHFORK LUNGE");
       }
 
@@ -1165,9 +1082,7 @@ class Boss {
       if (move === 2) {
         toast("SUMMONING DEMONS");
 
-        const currentSummons = world.enemies.length;
-
-        if (currentSummons < 12) {
+        if (world.enemies.length < 12) {
           for (let i = 0; i < 4; i++) {
             world.enemies.push(
               new Enemy(
@@ -1182,7 +1097,7 @@ class Boss {
 
       this.cooldown = this.phase2 ? 1200 : 1700;
     } else {
-      player.takeDamage(this.damage);
+      if (touching(this, player, 46)) player.takeDamage(this.damage);
       this.cooldown = 1450;
     }
   }
@@ -1190,13 +1105,7 @@ class Boss {
   draw(ctx, camX, camY) {
     if (this.dead) return;
 
-    SpriteRenderer.drawBoss(
-      ctx,
-      this.x - camX,
-      this.y - camY,
-      this,
-      this.frame
-    );
+    SpriteRenderer.drawBoss(ctx, this.x - camX, this.y - camY, this, this.frame);
   }
 }
 
@@ -1296,6 +1205,8 @@ class World {
 
     this.cameraX = 0;
     this.cameraY = 0;
+    this.mapZoom = 1;
+    this.showMiniMap = true;
 
     this.enemies = [];
     this.hazards = [];
@@ -1306,25 +1217,27 @@ class World {
     this.shake = 0;
     this.frame = 0;
 
-    this.decor = MAP_DECOR[this.level.decor] || [];
+    this.decor = [...(MAP_DECOR[this.level.decor] || [])];
 
     this.generate();
   }
 
   generate() {
-    this.enemies = this.level.enemies.map(
-      e => new Enemy(e.type, e.x, e.y)
-    );
+    this.enemies = this.level.enemies.map(e => new Enemy(e.type, e.x, e.y));
 
-    this.hazards = this.level.hazards.map(
-      h => new Hazard(h.type, h.x, h.y, h.r)
-    );
+    this.hazards = this.level.hazards.map(h => new Hazard(h.type, h.x, h.y, h.r));
 
-    this.boss = new Boss(
-      this.level.boss,
-      this.level.bossPos.x,
-      this.level.bossPos.y
-    );
+    this.boss = new Boss(this.level.boss, this.level.bossPos.x, this.level.bossPos.y);
+
+    for (let i = 0; i < 12; i++) {
+      this.decor.push({
+        type: "rubble",
+        x: rand(500, this.width - 500),
+        y: rand(500, this.height - 500),
+        w: rand(90, 160),
+        h: rand(70, 140)
+      });
+    }
 
     if (game.player) {
       game.player.x = this.level.playerStart.x;
@@ -1345,9 +1258,9 @@ class World {
     }
 
     for (const d of this.decor) {
-      if (["wall", "column", "pillar", "throne"].includes(d.type)) {
-        const w = d.w || 90;
-        const h = d.h || 90;
+      if (["wall", "column", "pillar", "throne", "rubble", "barricade"].includes(d.type)) {
+        const w = d.w || 120;
+        const h = d.h || 120;
 
         if (
           x > d.x - w / 2 &&
@@ -1368,22 +1281,16 @@ class World {
 
     this.particles.update(dt);
 
-    for (const h of this.hazards) {
-      h.update(dt, game.player, this);
-    }
+    for (const h of this.hazards) h.update(dt, game.player, this);
 
-    for (const e of this.enemies) {
-      e.update(dt, this);
-    }
+    for (const e of this.enemies) e.update(dt, this);
 
     this.enemies = this.enemies.filter(e => !e.dead);
 
-    if (this.boss && !this.boss.dead) {
-      this.boss.update(dt, this);
-    }
+    if (this.boss && !this.boss.dead) this.boss.update(dt, this);
 
-    this.cameraX = game.player.x - canvas.width / 2;
-    this.cameraY = game.player.y - canvas.height / 2;
+    this.cameraX += (game.player.x - canvas.width / 2 - this.cameraX) * 0.08;
+    this.cameraY += (game.player.y - canvas.height / 2 - this.cameraY) * 0.08;
 
     this.cameraX = clamp(this.cameraX, 0, Math.max(0, this.width - canvas.width));
     this.cameraY = clamp(this.cameraY, 0, Math.max(0, this.height - canvas.height));
@@ -1405,20 +1312,15 @@ class World {
     this.drawFloor(ctx);
     this.drawDecor(ctx);
 
-    for (const h of this.hazards) {
-      h.draw(ctx, this.cameraX, this.cameraY);
-    }
+    for (const h of this.hazards) h.draw(ctx, this.cameraX, this.cameraY);
 
-    for (const e of this.enemies) {
-      e.draw(ctx, this.cameraX, this.cameraY);
-    }
+    for (const e of this.enemies) e.draw(ctx, this.cameraX, this.cameraY);
 
-    if (this.boss && !this.boss.dead) {
-      this.boss.draw(ctx, this.cameraX, this.cameraY);
-    }
+    if (this.boss && !this.boss.dead) this.boss.draw(ctx, this.cameraX, this.cameraY);
 
     game.player.draw(ctx, this.cameraX, this.cameraY);
     this.particles.draw(ctx, this.cameraX, this.cameraY);
+    this.drawMiniMap(ctx);
 
     ctx.restore();
   }
@@ -1448,10 +1350,14 @@ class World {
         ctx.strokeStyle = t.seam;
         ctx.strokeRect(x, y, TILE - 2, TILE - 2);
 
-        if (n > 1.1) {
-          ctx.fillStyle = "rgba(255,255,255,0.025)";
-          ctx.fillRect(x + 8, y + 8, 12, 12);
-        }
+        ctx.fillStyle = "rgba(255,255,255,0.02)";
+        ctx.fillRect(x + 5, y + 7, 8, 8);
+
+        ctx.fillStyle = "rgba(0,0,0,0.15)";
+        ctx.fillRect(x + 22, y + 18, 10, 4);
+
+        ctx.fillStyle = "rgba(255,120,40,0.02)";
+        ctx.fillRect(x + 30, y + 30, 6, 6);
       }
     }
 
@@ -1469,31 +1375,6 @@ class World {
 
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = t.fog;
-
-    for (let i = 0; i < 28; i++) {
-      const x =
-        (i * 211 -
-          this.cameraX * 0.18 +
-          this.frame * 0.01) %
-        canvas.width;
-
-      const y =
-        (i * 137 -
-          this.cameraY * 0.18) %
-        canvas.height;
-
-      ctx.beginPath();
-      ctx.arc(
-        x,
-        y,
-        80 + Math.sin(this.frame / 900 + i) * 20,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-    }
   }
 
   drawDecor(ctx) {
@@ -1501,7 +1382,7 @@ class World {
       const x = d.x - this.cameraX;
       const y = d.y - this.cameraY;
 
-      if (d.type === "wall") {
+      if (d.type === "wall" || d.type === "barricade" || d.type === "rubble") {
         ctx.fillStyle = this.theme.wall;
         ctx.fillRect(x - d.w / 2, y - d.h / 2, d.w, d.h);
 
@@ -1608,6 +1489,39 @@ class World {
       }
     }
   }
+
+  drawMiniMap(ctx) {
+    if (!this.showMiniMap) return;
+
+    const w = 150;
+    const h = 100;
+    const x = canvas.width - w - 18;
+    const y = 18;
+
+    ctx.save();
+    ctx.globalAlpha = 0.72;
+
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(x, y, w, h);
+
+    ctx.strokeStyle = "rgba(255,159,46,0.45)";
+    ctx.strokeRect(x, y, w, h);
+
+    const px = x + (game.player.x / this.width) * w;
+    const py = y + (game.player.y / this.height) * h;
+
+    ctx.fillStyle = "#ffd078";
+    ctx.fillRect(px - 3, py - 3, 6, 6);
+
+    if (this.boss && !this.boss.dead) {
+      const bx = x + (this.boss.x / this.width) * w;
+      const by = y + (this.boss.y / this.height) * h;
+      ctx.fillStyle = "#ff3b24";
+      ctx.fillRect(bx - 4, by - 4, 8, 8);
+    }
+
+    ctx.restore();
+  }
 }
 
 /* ================= GAME MANAGER ================= */
@@ -1623,6 +1537,7 @@ class Game {
     this.paused = false;
 
     this.last = 0;
+    this.selectedClass = "warrior";
 
     this.bindUI();
   }
@@ -1654,7 +1569,7 @@ class Game {
 
     document.getElementById("btnResume")?.addEventListener("click", () => this.resume());
     document.getElementById("btnSkillTree")?.addEventListener("click", () => this.openSkills());
-    document.getElementById("btnRestart")?.addEventListener("click", () => location.reload());
+    document.getElementById("btnRestart")?.addEventListener("click", () => this.restartRun());
     document.getElementById("btnMenuFromPause")?.addEventListener("click", () => location.reload());
     document.getElementById("btnCloseSkills")?.addEventListener("click", () => this.resume());
 
@@ -1665,9 +1580,9 @@ class Game {
       });
     });
 
-    document.getElementById("btnTryAgain")?.addEventListener("click", () => location.reload());
+    document.getElementById("btnTryAgain")?.addEventListener("click", () => this.restartRun());
     document.getElementById("btnGameOverMenu")?.addEventListener("click", () => location.reload());
-    document.getElementById("btnPlayAgain")?.addEventListener("click", () => location.reload());
+    document.getElementById("btnPlayAgain")?.addEventListener("click", () => this.restartRun());
     document.getElementById("btnVictoryMenu")?.addEventListener("click", () => location.reload());
 
     document.getElementById("brightnessSlider")?.addEventListener("input", e => {
@@ -1693,6 +1608,8 @@ class Game {
   }
 
   start(classId) {
+    this.selectedClass = classId;
+
     this.player = new Player(classId);
     this.levelIndex = 0;
     this.world = new World(this.levelIndex);
@@ -1702,6 +1619,25 @@ class Game {
 
     showScreen("screen-game");
     toast("THE DESCENT BEGINS");
+
+    this.updateHUD();
+
+    this.last = performance.now();
+    requestAnimationFrame(t => this.loop(t));
+  }
+
+  restartRun() {
+    this.player = new Player(this.selectedClass || "warrior");
+    this.levelIndex = 0;
+    this.world = new World(0);
+
+    this.running = true;
+    this.paused = false;
+
+    document.getElementById("bossHud")?.classList.add("hidden");
+
+    showScreen("screen-game");
+    toast("RUN RESTARTED");
 
     this.updateHUD();
 
