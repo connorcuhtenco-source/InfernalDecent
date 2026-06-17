@@ -965,3 +965,297 @@ kbd {
     top: 220px;
   }
 }
+
+/* ============================================================
+   FINAL POLISH PATCH
+   - Smaller transparent popups
+   - Better screen fitting
+   - Cleaner HUD
+   - Better responsive layout
+   - Less visual clutter
+============================================================ */
+
+/* Canvas always fits the screen */
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#gameCanvas,
+#menuCanvas,
+#classCanvas,
+#victoryCanvas {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+/* Smaller transparent popups */
+#toast {
+  position: fixed;
+  left: 50%;
+  top: 17%;
+  transform: translateX(-50%);
+  z-index: 9999;
+
+  padding: 8px 16px;
+  min-width: auto;
+  max-width: 320px;
+
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+
+  color: rgba(255, 245, 220, 0.92);
+  background: rgba(20, 6, 4, 0.46);
+  border: 1px solid rgba(255, 159, 46, 0.28);
+  border-radius: 999px;
+
+  box-shadow:
+    0 0 20px rgba(255, 90, 30, 0.15),
+    inset 0 0 12px rgba(255, 255, 255, 0.04);
+
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+
+  animation: smallToastIn 0.22s ease-out;
+}
+
+#toast.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+@keyframes smallToastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px) scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+/* Damage numbers are smaller and cleaner */
+.damage-number {
+  position: fixed;
+  z-index: 9000;
+  pointer-events: none;
+
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: rgba(255, 235, 190, 0.92);
+  text-shadow:
+    0 0 8px rgba(255, 80, 20, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.75);
+
+  animation: damageFloatSmall 0.85s ease-out forwards;
+}
+
+.damage-number.crit {
+  font-size: 1.05rem;
+  color: rgba(255, 90, 35, 0.95);
+}
+
+@keyframes damageFloatSmall {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.9);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-36px) scale(0.92);
+  }
+}
+
+/* HUD cleaner and slightly transparent */
+#hudTop,
+#hudBottom,
+#bossHud {
+  backdrop-filter: blur(10px);
+}
+
+.hud-card,
+.weapon-card,
+.stats-hud,
+#bossHud {
+  background: rgba(12, 5, 5, 0.58) !important;
+  border-color: rgba(255, 159, 46, 0.22) !important;
+  box-shadow:
+    0 0 18px rgba(255, 80, 20, 0.08),
+    inset 0 0 12px rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Skill tree: better disabled look */
+.skill-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+}
+
+/* Make panels less huge */
+.panel {
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 159, 46, 0.35);
+  border-radius: 999px;
+}
+
+/* Better button transitions */
+.btn,
+.skill-btn,
+.class-card {
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.btn:hover,
+.skill-btn:hover,
+.class-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Responsive HUD fixes */
+@media (max-width: 1100px) {
+  #hudTop {
+    transform: scale(0.92);
+    transform-origin: top left;
+  }
+
+  #hudBottom {
+    transform: scale(0.92);
+    transform-origin: bottom left;
+  }
+
+  #bossHud {
+    transform: translateX(-50%) scale(0.92);
+  }
+}
+
+@media (max-width: 850px) {
+  #hudTop {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    transform: none;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  #hudBottom {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    transform: none;
+  }
+
+  .stats-hud {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.72rem;
+  }
+
+  .hud-card,
+  .weapon-card {
+    padding: 8px 10px;
+  }
+
+  #bossHud {
+    top: 170px;
+    width: min(88vw, 430px);
+  }
+
+  #toast {
+    top: 21%;
+    max-width: 260px;
+    font-size: 0.68rem;
+    padding: 7px 12px;
+  }
+}
+
+@media (max-height: 760px) {
+  #hudTop {
+    transform: scale(0.86);
+    transform-origin: top left;
+  }
+
+  #hudBottom {
+    transform: scale(0.86);
+    transform-origin: bottom left;
+  }
+
+  #bossHud {
+    top: 78px;
+    transform: translateX(-50%) scale(0.86);
+  }
+
+  #toast {
+    top: 15%;
+  }
+}
+
+@media (max-width: 620px) {
+  .landing {
+    width: min(92vw, 520px);
+    padding: 24px 18px;
+  }
+
+  .game-title {
+    font-size: clamp(2.4rem, 14vw, 4rem);
+  }
+
+  .landing-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .instructions-grid,
+  .class-grid,
+  .skills-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #hudTop {
+    font-size: 0.74rem;
+  }
+
+  #hudBottom {
+    font-size: 0.72rem;
+  }
+}
+
+/* Reduce motion for weaker computers */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
