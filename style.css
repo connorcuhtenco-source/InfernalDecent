@@ -1270,5 +1270,388 @@ body {
 
 /* Make top HUD smaller and cleaner */
 #hudTop {
-  padding: 0;
+  padding: 
+
+}
+
+/* ============================================================
+   FINAL BOSS MAP / HUD / GAME OVER POLISH PATCH
+   Add this to the VERY BOTTOM of style.css
+============================================================ */
+
+/* Make sure hidden screens stay hidden */
+.hidden {
+  display: none !important;
+}
+
+/* Canvas always fits screen */
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#gameCanvas,
+#menuCanvas,
+#classCanvas,
+#victoryCanvas {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+/* Smaller HUD so it does not cover the minimap */
+#hudTop {
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
+  max-width: calc(100vw - 190px) !important;
+
+  transform: scale(0.86);
+  transform-origin: top left;
+
+  gap: 8px !important;
+  z-index: 50;
+}
+
+#hudBottom {
+  bottom: 10px !important;
+  left: 10px !important;
+  transform: scale(0.88);
+  transform-origin: bottom left;
+  z-index: 50;
+}
+
+.hud-card,
+.weapon-card,
+.stats-hud {
+  padding: 7px 10px !important;
+  background: rgba(12, 5, 5, 0.56) !important;
+  border: 1px solid rgba(255, 159, 46, 0.22) !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 0 14px rgba(255, 80, 20, 0.08),
+    inset 0 0 10px rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(10px);
+}
+
+.stats-hud {
+  font-size: 0.72rem !important;
+  gap: 8px !important;
+}
+
+/* Boss bar only looks important inside boss arena */
+#bossHud {
+  top: 12px !important;
+  left: 50% !important;
+  transform: translateX(-50%) scale(0.92);
+  transform-origin: top center;
+
+  width: min(520px, 56vw) !important;
+  padding: 10px 14px !important;
+
+  background: rgba(10, 2, 2, 0.72) !important;
+  border: 1px solid rgba(255, 60, 30, 0.35) !important;
+  border-radius: 16px !important;
+
+  box-shadow:
+    0 0 28px rgba(255, 40, 20, 0.18),
+    inset 0 0 16px rgba(255, 255, 255, 0.04) !important;
+
+  backdrop-filter: blur(10px);
+  z-index: 65;
+}
+
+#bossName {
+  font-size: 0.82rem !important;
+  letter-spacing: 0.15em !important;
+  color: rgba(255, 230, 190, 0.95) !important;
+}
+
+#bossPhase {
+  font-size: 0.68rem !important;
+  color: rgba(255, 160, 90, 0.9) !important;
+}
+
+/* Smaller transparent popups */
+#toast {
+  position: fixed;
+  left: 50%;
+  top: 17%;
+  transform: translateX(-50%);
+  z-index: 9999;
+
+  padding: 8px 15px;
+  max-width: 330px;
+
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+
+  color: rgba(255, 245, 220, 0.94);
+  background: rgba(18, 5, 4, 0.48);
+  border: 1px solid rgba(255, 159, 46, 0.28);
+  border-radius: 999px;
+
+  box-shadow:
+    0 0 22px rgba(255, 90, 30, 0.15),
+    inset 0 0 12px rgba(255, 255, 255, 0.04);
+
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+
+  animation: bossToastIn 0.22s ease-out;
+}
+
+#toast.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+@keyframes bossToastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px) scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+/* Damage numbers */
+.damage-number {
+  position: fixed;
+  z-index: 9000;
+  pointer-events: none;
+
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: rgba(255, 235, 190, 0.92);
+  text-shadow:
+    0 0 8px rgba(255, 80, 20, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.75);
+
+  animation: damageFloatSmall 0.85s ease-out forwards;
+}
+
+.damage-number.crit {
+  font-size: 1.05rem;
+  color: rgba(255, 90, 35, 0.95);
+}
+
+@keyframes damageFloatSmall {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.9);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-36px) scale(0.92);
+  }
+}
+
+/* Game over screen polish */
+#screen-gameover .panel,
+#screen-victory .panel,
+#screen-pause .panel,
+#screen-skills .panel {
+  background:
+    radial-gradient(circle at top, rgba(255, 70, 25, 0.18), transparent 45%),
+    rgba(8, 3, 3, 0.88) !important;
+
+  border: 1px solid rgba(255, 159, 46, 0.28) !important;
+  box-shadow:
+    0 0 42px rgba(255, 40, 20, 0.18),
+    inset 0 0 18px rgba(255, 255, 255, 0.04) !important;
+
+  backdrop-filter: blur(14px);
+}
+
+#gameoverStats,
+#victoryStats {
+  color: rgba(255, 235, 205, 0.9);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* Respawn + main menu buttons */
+#btnTryAgain,
+#btnGameOverMenu {
+  min-width: 180px;
+  margin: 6px;
+  padding: 12px 18px !important;
+  border-radius: 14px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+}
+
+#btnTryAgain {
+  background: linear-gradient(135deg, #ff9f2e, #ff3b24) !important;
+  color: #160403 !important;
+  border: 1px solid rgba(255, 230, 180, 0.45) !important;
+  box-shadow: 0 0 22px rgba(255, 80, 20, 0.28) !important;
+}
+
+#btnGameOverMenu {
+  background: rgba(10, 4, 4, 0.72) !important;
+  color: rgba(255, 235, 210, 0.95) !important;
+  border: 1px solid rgba(255, 159, 46, 0.25) !important;
+}
+
+/* Skill buttons */
+.skill-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+}
+
+/* Buttons feel better */
+.btn,
+.skill-btn,
+.class-card,
+#btnTryAgain,
+#btnGameOverMenu {
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.btn:hover,
+.skill-btn:hover,
+.class-card:hover,
+#btnTryAgain:hover,
+#btnGameOverMenu:hover {
+  transform: translateY(-2px);
+}
+
+/* Panel scrolling on smaller screens */
+.panel {
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 159, 46, 0.35);
+  border-radius: 999px;
+}
+
+/* Responsive fixes */
+@media (max-width: 1100px) {
+  #hudTop {
+    transform: scale(0.78);
+    max-width: calc(100vw - 155px) !important;
+  }
+
+  #hudBottom {
+    transform: scale(0.8);
+  }
+
+  #bossHud {
+    width: min(500px, 68vw) !important;
+    transform: translateX(-50%) scale(0.84);
+  }
+}
+
+@media (max-width: 850px) {
+  #hudTop {
+    top: 8px !important;
+    left: 8px !important;
+    transform: scale(0.72);
+    max-width: calc(100vw - 130px) !important;
+  }
+
+  #hudBottom {
+    left: 8px !important;
+    bottom: 8px !important;
+    transform: scale(0.76);
+  }
+
+  .stats-hud {
+    font-size: 0.66rem !important;
+  }
+
+  #bossHud {
+    top: 74px !important;
+    width: min(430px, 86vw) !important;
+  }
+
+  #toast {
+    top: 21%;
+    max-width: 260px;
+    font-size: 0.68rem;
+    padding: 7px 12px;
+  }
+}
+
+@media (max-width: 620px) {
+  .landing {
+    width: min(92vw, 520px);
+    padding: 24px 18px;
+  }
+
+  .game-title {
+    font-size: clamp(2.4rem, 14vw, 4rem);
+  }
+
+  .landing-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .instructions-grid,
+  .class-grid,
+  .skills-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #hudTop {
+    transform: scale(0.62);
+  }
+
+  #hudBottom {
+    transform: scale(0.68);
+  }
+
+  #bossHud {
+    top: 68px !important;
+    transform: translateX(-50%) scale(0.78);
+  }
+}
+
+/* Short screens */
+@media (max-height: 760px) {
+  #hudTop {
+    transform: scale(0.72);
+  }
+
+  #hudBottom {
+    transform: scale(0.72);
+  }
+
+  #bossHud {
+    top: 70px !important;
+    transform: translateX(-50%) scale(0.8);
+  }
+
+  #toast {
+    top: 15%;
+  }
 }

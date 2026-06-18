@@ -1,25 +1,25 @@
 "use strict";
 
 /* ============================================================
-   INFERNAL DESCENT — BOSS ARENA + SOUND + BLOCK BUILD
+   INFERNAL DESCENT — SEPARATE BOSS MAP BUILD
    Requires:
    1. sprites.js
    2. levels.js
    3. script.js
 
-   Added:
-   - Boss arena opens only after all mobs are killed
-   - Boss spawns only inside the arena
-   - Boss HP is 5x
-   - Mob HP is 2x
-   - Button click sounds
-   - Attack / special / chest sounds
-   - Cyclops and Devil beams no longer auto-track
-   - Mobs path around obstacles better
-   - Block shield absorbs 50 damage, breaks, then regens after 5s
-   - Game over screen shows respawn/back menu
+   Main upgrades:
+   - Boss portal opens after mobs are cleared
+   - Portal transports player to a whole separate boss arena map
+   - Hell-style arena maps instead of side-screen arenas
+   - Bosses have ranged attacks so you cannot cheese them by running forever
+   - Boss HP 5x
+   - Mob HP 2x
+   - Blocking absorbs 50 damage, breaks, then regens after 5 seconds
+   - Cyclops / Devil beams lock direction before firing
+   - Game over screen has Respawn and Back To Main Menu
    - Respawn restarts the current level and respawns enemies
-   - Boss health bar only appears inside boss arena
+   - Boss health bar only appears in boss map
+   - Button / attack / chest / boss sounds
 ============================================================ */
 
 /* ================= CANVAS SETUP ================= */
@@ -81,13 +81,8 @@ function held(code) {
 
 function once(code) {
   const value = !!pressed[code];
-  pressed[equivalentCodeFix(code)] = false;
   pressed[code] = false;
   return value;
-}
-
-function equivalentCodeFix(code) {
-  return code;
 }
 
 /* ================= HELPERS ================= */
@@ -243,7 +238,6 @@ const SoundFX = {
     if (!SETTINGS.sound) return;
 
     this.unlock();
-
     if (!this.ctx) return;
 
     const now = this.ctx.currentTime;
@@ -325,12 +319,20 @@ const SoundFX = {
     }, 70);
   },
 
-  bossOpen() {
+  portal() {
     this.tone(180, 0.12, "sawtooth", 0.065);
 
     setTimeout(() => {
       this.tone(420, 0.16, "triangle", 0.075);
     }, 120);
+  },
+
+  roar() {
+    this.tone(90, 0.22, "sawtooth", 0.08);
+
+    setTimeout(() => {
+      this.tone(65, 0.25, "square", 0.07);
+    }, 110);
   }
 };
 
@@ -699,7 +701,7 @@ class ParticleSystem {
   }
 }
 
-/* ================= BEAM ATTACKS ================= */
+/* ================= BEAM + ARENA HAZARD ATTACKS ================= */
 
 class BeamAttack {
   constructor(x1, y1, x2, y2, damage, color, width = 22, windup = 520, active = 160) {
@@ -755,6 +757,125 @@ class BeamAttack {
     ctx.moveTo(this.x1 - camX, this.y1 - camY);
     ctx.lineTo(this.x2 - camX, this.y2 - camY);
     ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
+class TimedVent {
+  constructor(x, y, r) {
+    this.x = x;
+    this.y = y;
+    this.r = r;
+    this.timer = rand(0, 2200);
+    this.active = false;
+    this.dead = false;
+    this.hitThisBlast = false;
+  }
+
+  update(dt, world) {
+    this.timer += dt;
+
+    const cycle = this.timer % 3200;
+    this.active = cycle > 2300 && cycle < 2700;
+
+    if (cycle < 2000) {
+      this.hitThisBlast = false;
+    }
+
+    if (this.active && !this.hitThisBlast) {
+      const p = game.player;
+
+      if (distance(this.x, this.y, p.x, p.y) < this.r + 22) {
+        p.takeDamage(18);
+        this.hitThisBlast = true;
+      }
+    }
+  }
+
+  draw(ctx, camX, camY) {
+    const x = this.x - camX;
+    const y = this.y - camY;
+
+    const cycle = this.timer % 3200;
+    const warning = cycle > 1700 && cycle <= 2300;
+
+    ctx.save();
+
+    if (this.active) {
+      SpriteFX.glow(ctx, x, y, this.r + 75, "rgba(255,80,20,0.6)");
+      ctx.fillStyle = "rgba(255,80,20,0.45)";
+    } else if (warning) {
+      SpriteFX.glow(ctx, x, y, this.r + 45, "rgba(255,170,50,0.35)");
+      ctx.fillStyle = "rgba(255,170,50,0.28)";
+    } else {
+      ctx.fillStyle = "rgba(0,0,0,0.32)";
+    }
+
+    ctx.beginPath();
+    ctx.arc(x, y, this.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = warning || this.active ? "#ff9f2e" : "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
+class BossFireball {
+  constructor(x, y, dx, dy, damage, color = "#ff3b24") {
+    const len = Math.hypot(dx, dy) || 1;
+
+    this.x = x;
+    this.y = y;
+    this.dx = dx / len;
+    this.dy = dy / len;
+    this.damage = damage;
+    this.color = color;
+    this.speed = 340;
+    this.radius = 16;
+    this.life = 2600;
+    this.dead = false;
+  }
+
+  update(dt, world) {
+    this.life -= dt;
+
+    this.x += this.dx * this.speed * (dt / 1000);
+    this.y += this.dy * this.speed * (dt / 1000);
+
+    if (this.life <= 0 || world.collides(this.x, this.y, 8)) {
+      world.particles.burst(this.x, this.y, this.color, 20);
+      this.dead = true;
+      return;
+    }
+
+    if (touching(this, game.player, this.radius + 18)) {
+      game.player.takeDamage(this.damage);
+      world.particles.burst(this.x, this.y, this.color, 22);
+      this.dead = true;
+    }
+  }
+
+  draw(ctx, camX, camY) {
+    const x = this.x - camX;
+    const y = this.y - camY;
+
+    ctx.save();
+
+    SpriteFX.glow(ctx, x, y, 48, "rgba(255,90,25,0.55)");
+
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(x, y, this.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#ffd078";
+    ctx.beginPath();
+    ctx.arc(x - this.dx * 5, y - this.dy * 5, this.radius * 0.45, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
   }
@@ -817,6 +938,8 @@ class Player {
     this.invincible = 0;
     this.blocking = false;
 
+    this.stunned = 0;
+
     this.swingTimer = 0;
     this.swingPower = 0;
 
@@ -859,6 +982,7 @@ class Player {
     this.specialTimer -= dt;
     this.invincible -= dt;
     this.swingTimer -= dt;
+    this.stunned -= dt;
 
     this.speedBoostTimer -= dt;
     this.attackBoostTimer -= dt;
@@ -885,13 +1009,32 @@ class Player {
       this.facingY = aimY / aimLen;
     }
 
-    this.blocking = held("KeyQ") && this.stamina > 5 && !this.blockBroken;
+    this.blocking = held("KeyQ") && this.stamina > 5 && !this.blockBroken && this.stunned <= 0;
 
     if (this.blocking) {
       this.stamina = clamp(this.stamina - 12 * s, 0, this.maxStamina);
     } else {
       this.stamina = clamp(this.stamina + 22 * s, 0, this.maxStamina);
     }
+
+    if (this.stunned <= 0) {
+      this.move(dt, world);
+    }
+
+    if (once("Space") && this.stunned <= 0) this.attack(world);
+    if (once("KeyE") && this.stunned <= 0) this.special(world);
+    if (once("KeyR")) game.openSkills();
+    if (once("Escape")) game.pause();
+
+    for (const p of this.projectiles) {
+      p.update(dt, world);
+    }
+
+    this.projectiles = this.projectiles.filter(p => !p.dead);
+  }
+
+  move(dt, world) {
+    const s = dt / 1000;
 
     let mx = 0;
     let my = 0;
@@ -922,17 +1065,6 @@ class Player {
 
     if (!world.collides(nx, this.y, 18)) this.x = nx;
     if (!world.collides(this.x, ny, 18)) this.y = ny;
-
-    if (once("Space")) this.attack(world);
-    if (once("KeyE")) this.special(world);
-    if (once("KeyR")) game.openSkills();
-    if (once("Escape")) game.pause();
-
-    for (const p of this.projectiles) {
-      p.update(dt, world);
-    }
-
-    this.projectiles = this.projectiles.filter(p => !p.dead);
   }
 
   attack(world) {
@@ -1004,7 +1136,7 @@ class Player {
       }
     }
 
-    if (world.boss && !world.boss.dead && world.inBossArena) {
+    if (world.boss && !world.boss.dead && world.isBossMap) {
       if (isInAttackCone(this, world.boss, weapon.range + 8, 0.6)) {
         world.boss.takeDamage(damage);
 
@@ -1081,7 +1213,7 @@ class Player {
       }
     }
 
-    if (world.boss && !world.boss.dead && world.inBossArena) {
+    if (world.boss && !world.boss.dead && world.isBossMap) {
       if (isInAttackCone(this, world.boss, radius + 10, 0.42)) {
         world.boss.takeDamage(damage);
 
@@ -1217,6 +1349,15 @@ class Player {
     for (const p of this.projectiles) {
       p.draw(ctx, camX, camY);
     }
+
+    if (this.stunned > 0) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,220,120,0.8)";
+      ctx.font = "900 12px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("STUNNED", this.x - camX, this.y - camY - 52);
+      ctx.restore();
+    }
   }
 
   drawWeaponSwing(ctx, camX, camY) {
@@ -1321,7 +1462,7 @@ class Projectile {
       }
     }
 
-    if (world.boss && !world.boss.dead && world.inBossArena && touching(this, world.boss, this.radius + 30)) {
+    if (world.boss && !world.boss.dead && world.isBossMap && touching(this, world.boss, this.radius + 30)) {
       world.boss.takeDamage(this.damage);
 
       damageNumber(world.boss.x - world.cameraX, world.boss.y - world.cameraY, this.damage, this.crit);
@@ -1510,7 +1651,7 @@ class Enemy {
 
   update(dt, world) {
     if (this.dead) return;
-    if (world.inBossArena) return;
+    if (world.isBossMap && !this.awake) return;
 
     this.frame += dt;
     this.flash -= dt;
@@ -1529,11 +1670,9 @@ class Enemy {
       this.awake = true;
     }
 
-    if (!this.awake) {
-      return;
-    }
+    if (!this.awake) return;
 
-    if (d > detectRange * 1.55) {
+    if (!world.isBossMap && d > detectRange * 1.55) {
       this.awake = false;
       return;
     }
@@ -1638,8 +1777,6 @@ class Enemy {
       { x: dx * 0.7 + dy * 0.7, y: dy * 0.7 - dx * 0.7 }
     ];
 
-    let moved = false;
-
     for (const a of attempts) {
       const nx = this.x + a.x * step;
       const ny = this.y + a.y * step;
@@ -1647,18 +1784,14 @@ class Enemy {
       if (!world.collides(nx, ny, 20)) {
         this.x = nx;
         this.y = ny;
-        moved = true;
-        break;
+        this.stuckTimer = 0;
+        this.lastX = this.x;
+        this.lastY = this.y;
+        return;
       }
     }
 
-    const movement = distance(this.x, this.y, this.lastX ?? this.x, this.lastY ?? this.y);
-
-    if (movement < 0.2 || Number.isNaN(movement)) {
-      this.stuckTimer += dt;
-    } else {
-      this.stuckTimer = 0;
-    }
+    this.stuckTimer += dt;
 
     if (this.stuckTimer > 700) {
       const p = world.findSafeSpotNear(this.x, this.y, 45, 110);
@@ -1666,9 +1799,6 @@ class Enemy {
       this.y = p.y;
       this.stuckTimer = 0;
     }
-
-    this.lastX = this.x;
-    this.lastY = this.y;
   }
 
   draw(ctx, camX, camY) {
@@ -1699,7 +1829,7 @@ class Enemy {
   }
 }
 
-/* ================= BOSSES ================= */
+/* ================= BOSS ================= */
 
 class Boss {
   constructor(name, x, y) {
@@ -1717,14 +1847,16 @@ class Boss {
     this.souls = data.souls;
     this.color = data.color;
 
-    this.cooldown = 1500;
+    this.cooldown = 1200;
+    this.rangedCooldown = 1600;
+    this.specialCooldown = 2800;
 
     this.dead = false;
     this.phase2 = false;
+    this.phase3 = false;
     this.frame = 0;
-    this.stuckTimer = 0;
-    this.lastX = x;
-    this.lastY = y;
+
+    this.throneIntro = name === "The Devil" ? 900 : 0;
   }
 
   takeDamage(amount) {
@@ -1734,8 +1866,29 @@ class Boss {
       this.phase2 = true;
       toast("Phase II");
 
+      if (this.name === "Alpha Cerberus") {
+        SoundFX.roar();
+        game.world.activateCerberusPhase2();
+      }
+
+      if (this.name === "The Devil") {
+        game.world.activateDevilAnger();
+      }
+
+      if (this.name === "The Gate Keeper") {
+        game.world.activateGateKeeperPhase2();
+      }
+
       if (SETTINGS.shake) {
-        game.world.shake = 20;
+        game.world.shake = 22;
+      }
+    }
+
+    if (!this.phase3 && this.hp <= this.maxHp * 0.25) {
+      this.phase3 = true;
+
+      if (this.name === "The Devil") {
+        game.world.activateDevilFinal();
       }
     }
 
@@ -1751,17 +1904,34 @@ class Boss {
 
   update(dt, world) {
     if (this.dead) return;
-    if (!world.inBossArena) return;
+    if (!world.isBossMap) return;
 
     this.frame += dt;
+
+    if (this.throneIntro > 0) {
+      this.throneIntro -= dt;
+
+      if (this.throneIntro <= 0) {
+        const start = world.currentArena.bossPos;
+        this.x = start.x;
+        this.y = start.y;
+        toast("The Devil Descends");
+        if (SETTINGS.shake) world.shake = 18;
+      }
+
+      return;
+    }
+
     this.cooldown -= dt;
+    this.rangedCooldown -= dt;
+    this.specialCooldown -= dt;
 
     const player = game.player;
     const d = distance(this.x, this.y, player.x, player.y);
 
     this.updateBossHUD(world);
 
-    if (d > 95) {
+    if (d > 105) {
       const dx = (player.x - this.x) / (d || 1);
       const dy = (player.y - this.y) / (d || 1);
 
@@ -1770,8 +1940,18 @@ class Boss {
       this.moveSmart(world, dx, dy, speed, dt);
     }
 
+    if (this.rangedCooldown <= 0) {
+      this.rangedAttack(player, world, d);
+      return;
+    }
+
+    if (this.specialCooldown <= 0) {
+      this.specialAttack(player, world, d);
+      return;
+    }
+
     if (this.cooldown <= 0) {
-      this.attack(player, world, d);
+      this.meleeAttack(player, world, d);
     }
   }
 
@@ -1799,13 +1979,202 @@ class Boss {
     }
   }
 
+  meleeAttack(player, world, d) {
+    if (this.name === "The Gate Keeper") {
+      if (touching(this, player, 54)) {
+        player.takeDamage(this.phase2 ? 34 : 22);
+      }
+
+      toast("Crushing Swing");
+      this.cooldown = this.phase2 ? 1050 : 1450;
+      return;
+    }
+
+    if (this.name === "Alpha Cerberus") {
+      if (touching(this, player, 62)) {
+        player.takeDamage(this.phase2 ? 29 : 24);
+      }
+
+      toast("Triple Bite");
+      this.cooldown = this.phase2 ? 1050 : 1450;
+      return;
+    }
+
+    if (this.name === "The Devil") {
+      if (touching(this, player, 58)) {
+        player.takeDamage(this.phase2 ? 28 : 22);
+      }
+
+      toast("Pitchfork Lunge");
+      this.cooldown = this.phase2 ? 950 : 1350;
+      return;
+    }
+
+    if (touching(this, player, 48)) {
+      player.takeDamage(this.damage);
+    }
+
+    this.cooldown = 1400;
+  }
+
+  rangedAttack(player, world, d) {
+    if (this.name === "The Gate Keeper") {
+      if (d > 250) {
+        world.projectiles.push(
+          new BossFireball(
+            this.x,
+            this.y,
+            player.x - this.x,
+            player.y - this.y,
+            20,
+            "#ff6a3d"
+          )
+        );
+
+        toast("Burning Rubble");
+      } else {
+        this.gateKeeperRush(world, player);
+      }
+
+      this.rangedCooldown = this.phase2 ? 1300 : 1700;
+      return;
+    }
+
+    if (this.name === "Alpha Cerberus") {
+      world.projectiles.push(
+        new BossFireball(
+          this.x,
+          this.y,
+          player.x - this.x,
+          player.y - this.y,
+          this.phase2 ? 24 : 18,
+          "#ff6a3d"
+        )
+      );
+
+      toast("Fire Spit");
+      this.rangedCooldown = this.phase2 ? 1100 : 1450;
+      return;
+    }
+
+    if (this.name === "The Devil") {
+      if (world.hasLineOfSight(this.x, this.y, player.x, player.y)) {
+        world.beams.push(
+          new BeamAttack(
+            this.x,
+            this.y - 45,
+            player.x,
+            player.y,
+            this.phase2 ? 32 : 26,
+            "#ff2d1c",
+            30,
+            650,
+            180
+          )
+        );
+
+        toast("Devil Beam");
+      }
+
+      this.rangedCooldown = this.phase2 ? 1150 : 1550;
+      return;
+    }
+
+    world.projectiles.push(
+      new BossFireball(this.x, this.y, player.x - this.x, player.y - this.y, this.damage)
+    );
+
+    this.rangedCooldown = 1600;
+  }
+
+  specialAttack(player, world, d) {
+    if (this.name === "The Gate Keeper") {
+      this.gateKeeperShockwave(world);
+      this.specialCooldown = this.phase2 ? 2200 : 2800;
+      return;
+    }
+
+    if (this.name === "Alpha Cerberus") {
+      const roarRange = this.phase2 ? 240 : 185;
+
+      SoundFX.roar();
+
+      if (d <= roarRange) {
+        player.takeDamage(this.phase2 ? 18 : 12);
+        player.stunned = 900;
+        world.particles.burst(player.x, player.y, "#ff6a3d", 22);
+      }
+
+      toast("Roar");
+      this.specialCooldown = this.phase2 ? 2300 : 3100;
+      return;
+    }
+
+    if (this.name === "The Devil") {
+      world.devilSummon();
+      this.specialCooldown = this.phase2 ? 2600 : 3400;
+      return;
+    }
+
+    this.specialCooldown = 2600;
+  }
+
+  gateKeeperRush(world, player) {
+    const arena = world.currentArena;
+    const runway = arena.runway;
+
+    if (!runway) return;
+
+    world.beams.push(
+      new BeamAttack(
+        runway.x1,
+        runway.y1,
+        runway.x2,
+        runway.y2,
+        this.phase2 ? 30 : 22,
+        "#ff6a3d",
+        55,
+        480,
+        120
+      )
+    );
+
+    for (const d of world.decor) {
+      if (d.type !== "breakPillar" || d.broken) continue;
+
+      const dist = pointLineDistance(d.x, d.y, runway.x1, runway.y1, runway.x2, runway.y2);
+
+      if (dist < 85 && Math.random() < 0.42) {
+        d.broken = true;
+        world.particles.burst(d.x, d.y, "#cfc0b5", 40);
+      }
+    }
+
+    toast("Rush Down");
+  }
+
+  gateKeeperShockwave(world) {
+    const p = game.player;
+    const d = distance(this.x, this.y, p.x, p.y);
+
+    if (d < 360 && world.hasLineOfSight(this.x, this.y, p.x, p.y)) {
+      p.takeDamage(this.phase2 ? 24 : 18);
+    }
+
+    world.particles.burst(this.x, this.y, "#ff9f2e", 65);
+
+    if (SETTINGS.shake) world.shake = 16;
+
+    toast("Shockwave");
+  }
+
   updateBossHUD(world) {
     const bossHud = document.getElementById("bossHud");
     const bossName = document.getElementById("bossName");
     const bossBar = document.getElementById("bossBar");
     const bossPhase = document.getElementById("bossPhase");
 
-    if (!world.inBossArena) {
+    if (!world.isBossMap) {
       if (bossHud) bossHud.classList.add("hidden");
       return;
     }
@@ -1818,134 +2187,19 @@ class Boss {
     }
 
     if (bossPhase) {
-      bossPhase.textContent = this.phase2 ? "Phase II" : "Phase I";
+      if (this.phase3) bossPhase.textContent = "Final Rage";
+      else if (this.phase2) bossPhase.textContent = "Phase II";
+      else bossPhase.textContent = "Phase I";
     }
-  }
-
-  attack(player, world, d) {
-    if (this.name === "The Gate Keeper") {
-      if (Math.random() > 0.5) {
-        if (touching(this, player, 50)) {
-          player.takeDamage(this.phase2 ? 34 : 20);
-        }
-
-        toast("Rush");
-      } else {
-        if (touching(this, player, 48)) {
-          player.takeDamage(this.phase2 ? 25 : 15);
-        }
-
-        toast("Swing");
-      }
-
-      this.cooldown = this.phase2 ? 1250 : 1650;
-      return;
-    }
-
-    if (this.name === "Alpha Cerberus") {
-      const move = Math.floor(Math.random() * (this.phase2 ? 3 : 2));
-
-      if (move === 0) {
-        const roarRange = this.phase2 ? 210 : 165;
-
-        if (d <= roarRange) {
-          player.takeDamage(this.phase2 ? 16 : 11);
-          world.particles.burst(player.x, player.y, "#ff6a3d", 18);
-        }
-
-        toast("Roar");
-      }
-
-      if (move === 1) {
-        if (touching(this, player, 60)) {
-          player.takeDamage(25);
-        }
-
-        toast("Bite");
-      }
-
-      if (move === 2) {
-        if (world.hasLineOfSight(this.x, this.y, player.x, player.y)) {
-          world.beams.push(
-            new BeamAttack(
-              this.x,
-              this.y - 25,
-              player.x,
-              player.y,
-              30,
-              "#ff6a3d",
-              28,
-              600,
-              170
-            )
-          );
-        }
-
-        toast("Beam");
-      }
-
-      this.cooldown = this.phase2 ? 1350 : 1950;
-      return;
-    }
-
-    if (this.name === "The Devil") {
-      const move = Math.floor(Math.random() * (this.phase2 ? 3 : 2));
-
-      if (move === 0) {
-        if (touching(this, player, 54)) {
-          player.takeDamage(22);
-        }
-
-        toast("Lunge");
-      }
-
-      if (move === 1) {
-        if (world.hasLineOfSight(this.x, this.y, player.x, player.y)) {
-          world.beams.push(
-            new BeamAttack(
-              this.x,
-              this.y - 45,
-              player.x,
-              player.y,
-              28,
-              "#ff2d1c",
-              30,
-              650,
-              180
-            )
-          );
-        }
-
-        toast("Devil Beam");
-      }
-
-      if (move === 2) {
-        toast("Summon");
-
-        if (world.enemies.length < 3) {
-          for (let i = 0; i < 2; i++) {
-            const p = world.findSafeSpotNear(this.x, this.y, 180, 320);
-
-            const summoned = new Enemy(choice(["hound", "gargoyle"]), p.x, p.y);
-            summoned.awake = true;
-            world.enemies.push(summoned);
-          }
-        }
-      }
-
-      this.cooldown = this.phase2 ? 1150 : 1650;
-      return;
-    }
-
-    if (touching(this, player, 46)) {
-      player.takeDamage(this.damage);
-    }
-
-    this.cooldown = 1450;
   }
 
   draw(ctx, camX, camY) {
     if (this.dead) return;
+
+    if (this.throneIntro > 0 && this.name === "The Devil") {
+      SpriteRenderer.drawBoss(ctx, this.x - camX, this.y - camY, this, this.frame);
+      return;
+    }
 
     SpriteRenderer.drawBoss(ctx, this.x - camX, this.y - camY, this, this.frame);
   }
@@ -1967,7 +2221,7 @@ class Hazard {
     this.frame += dt;
     this.timer -= dt;
 
-    if (world.inBossArena) return;
+    if (world.isBossMap) return;
 
     const d = distance(this.x, this.y, player.x, player.y);
 
@@ -2052,13 +2306,19 @@ class Hazard {
 /* ================= WORLD ================= */
 
 class World {
-  constructor(levelIndex) {
+  constructor(levelIndex, mode = "normal") {
     this.levelIndex = levelIndex;
     this.level = getLevel(levelIndex);
-    this.theme = getTheme(this.level.theme);
+    this.mode = mode;
+    this.isBossMap = mode === "boss";
 
-    this.width = this.level.width;
-    this.height = this.level.height;
+    this.currentArena = this.isBossMap ? this.level.bossArenaMap : null;
+
+    const themeId = this.isBossMap ? this.currentArena.theme : this.level.theme;
+    this.theme = getTheme(themeId);
+
+    this.width = this.isBossMap ? this.currentArena.width : this.level.width;
+    this.height = this.isBossMap ? this.currentArena.height : this.level.height;
 
     this.cameraX = 0;
     this.cameraY = 0;
@@ -2067,11 +2327,17 @@ class World {
     this.hazards = [];
     this.chests = [];
     this.beams = [];
+    this.projectiles = [];
+    this.vents = [];
     this.boss = null;
 
-    this.bossArenaUnlocked = false;
-    this.inBossArena = false;
-    this.bossArenaEntered = false;
+    this.portalUnlocked = false;
+    this.portalPulse = 0;
+
+    this.devilsAnger = false;
+    this.devilFinal = false;
+    this.cerberusShrink = false;
+    this.gateKeeperInferno = false;
 
     this.particles = new ParticleSystem();
 
@@ -2080,12 +2346,24 @@ class World {
 
     this.showMiniMap = true;
 
-    this.decor = [...(MAP_DECOR[this.level.decor] || [])];
+    this.decor = this.isBossMap
+      ? [...(this.currentArena.decor || [])]
+      : [...(MAP_DECOR[this.level.decor] || [])];
 
     this.generate();
   }
 
   generate() {
+    if (this.isBossMap) {
+      this.generateBossMap();
+    } else {
+      this.generateNormalMap();
+    }
+
+    this.updateLevelUI();
+  }
+
+  generateNormalMap() {
     this.enemies = [];
 
     for (const e of this.level.enemies) {
@@ -2094,11 +2372,11 @@ class World {
     }
 
     this.hazards = this.level.hazards.map(h => new Hazard(h.type, h.x, h.y, h.r));
-
     this.chests = (this.level.chests || []).map(c => new Chest(c.x, c.y, c.potion));
 
     this.boss = null;
     this.beams = [];
+    this.projectiles = [];
 
     this.addRandomDecor();
 
@@ -2110,7 +2388,36 @@ class World {
     }
 
     this.hideBossHUD();
-    this.updateLevelUI();
+  }
+
+  generateBossMap() {
+    const arena = this.currentArena;
+
+    this.enemies = [];
+    this.chests = [];
+    this.hazards = [];
+    this.beams = [];
+    this.projectiles = [];
+    this.vents = [];
+
+    if (arena.lavaVents) {
+      this.vents = arena.lavaVents.map(v => new TimedVent(v.x, v.y, v.r));
+    }
+
+    const bossSpot = this.findNearestSafeSpot(arena.bossPos.x, arena.bossPos.y);
+    this.boss = new Boss(this.level.boss, bossSpot.x, bossSpot.y);
+
+    if (this.level.boss === "The Devil" && arena.throne) {
+      this.boss.x = arena.throne.x;
+      this.boss.y = arena.throne.y;
+    }
+
+    if (game.player) {
+      game.player.x = arena.playerStart.x;
+      game.player.y = arena.playerStart.y;
+      game.player.projectiles = [];
+      game.player.invincible = 1200;
+    }
   }
 
   addRandomDecor() {
@@ -2133,10 +2440,14 @@ class World {
     const layerTitle = document.getElementById("layerTitle");
     const objectiveText = document.getElementById("objectiveText");
 
-    if (layerTitle) layerTitle.textContent = this.level.short;
+    if (layerTitle) {
+      layerTitle.textContent = this.isBossMap
+        ? this.currentArena.name
+        : this.level.short;
+    }
 
     if (objectiveText) {
-      objectiveText.textContent = this.inBossArena
+      objectiveText.textContent = this.isBossMap
         ? this.level.bossObjective
         : this.level.objective;
     }
@@ -2147,14 +2458,7 @@ class World {
   }
 
   isBlockingType(type) {
-    return ["wall", "column", "pillar", "throne", "rubble", "barricade"].includes(type);
-  }
-
-  pointInsideBossArena(x, y) {
-    const a = this.level.bossArena;
-    if (!a) return false;
-
-    return x > a.x && x < a.x + a.w && y > a.y && y < a.y + a.h;
+    return ["wall", "column", "pillar", "throne", "rubble", "barricade", "breakPillar"].includes(type);
   }
 
   collides(x, y, radius = 18) {
@@ -2162,29 +2466,16 @@ class World {
       return true;
     }
 
-    const arena = this.level.bossArena;
+    if (this.isBossMap && this.currentArena.type === "cerberus_colosseum") {
+      const r = this.cerberusShrink ? this.currentArena.phase2Radius : this.currentArena.radius;
+      const d = distance(x, y, this.currentArena.centerX, this.currentArena.centerY);
 
-    if (arena) {
-      const insideArena = this.pointInsideBossArena(x, y);
-
-      if (!this.inBossArena && insideArena) {
-        return true;
-      }
-
-      if (this.inBossArena) {
-        if (
-          x < arena.x + 45 ||
-          x > arena.x + arena.w - 45 ||
-          y < arena.y + 45 ||
-          y > arena.y + arena.h - 45
-        ) {
-          return true;
-        }
-      }
+      if (d > r - radius) return true;
     }
 
     for (const d of this.decor) {
       if (!this.isBlockingType(d.type)) continue;
+      if (d.broken) continue;
 
       const w = d.w || 115;
       const h = d.h || 115;
@@ -2207,7 +2498,7 @@ class World {
       return { x, y };
     }
 
-    for (let r = 40; r <= 380; r += 35) {
+    for (let r = 40; r <= 420; r += 35) {
       for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
         const nx = x + Math.cos(a) * r;
         const ny = y + Math.sin(a) * r;
@@ -2218,10 +2509,11 @@ class World {
       }
     }
 
-    return {
-      x: this.level.playerStart.x + 140,
-      y: this.level.playerStart.y
-    };
+    if (this.isBossMap) {
+      return { x: this.currentArena.playerStart.x + 140, y: this.currentArena.playerStart.y };
+    }
+
+    return { x: this.level.playerStart.x + 140, y: this.level.playerStart.y };
   }
 
   findSafeOpenSpot() {
@@ -2232,10 +2524,6 @@ class World {
       if (this.collides(x, y, 50)) continue;
 
       if (distance(x, y, this.level.playerStart.x, this.level.playerStart.y) < 350) {
-        continue;
-      }
-
-      if (this.level.bossArena && this.pointInsideBossArena(x, y)) {
         continue;
       }
 
@@ -2295,34 +2583,30 @@ class World {
 
     this.particles.update(dt);
 
-    for (const b of this.beams) {
-      b.update(dt, this);
-    }
-
+    for (const b of this.beams) b.update(dt, this);
     this.beams = this.beams.filter(b => !b.dead);
 
-    for (const h of this.hazards) {
-      h.update(dt, game.player, this);
-    }
+    for (const p of this.projectiles) p.update(dt, this);
+    this.projectiles = this.projectiles.filter(p => !p.dead);
 
-    for (const c of this.chests) {
-      c.update(dt, this);
-    }
+    for (const v of this.vents) v.update(dt, this);
 
-    for (const e of this.enemies) {
-      e.update(dt, this);
-    }
+    for (const h of this.hazards) h.update(dt, game.player, this);
 
+    for (const c of this.chests) c.update(dt, this);
+
+    for (const e of this.enemies) e.update(dt, this);
     this.enemies = this.enemies.filter(e => !e.dead);
 
-    if (!this.bossArenaUnlocked && this.enemies.length === 0 && !this.inBossArena) {
-      this.bossArenaUnlocked = true;
-      SoundFX.bossOpen();
-      toast("Boss Arena Open");
-      this.updateLevelUI();
+    if (!this.isBossMap && !this.portalUnlocked && this.enemies.length === 0) {
+      this.portalUnlocked = true;
+      SoundFX.portal();
+      toast("Boss Portal Open");
     }
 
-    this.checkBossArenaEntry();
+    if (!this.isBossMap && this.portalUnlocked) {
+      this.checkPortalEntry();
+    }
 
     if (this.boss && !this.boss.dead) {
       this.boss.update(dt, this);
@@ -2335,40 +2619,51 @@ class World {
     this.cameraY = clamp(this.cameraY, 0, Math.max(0, this.height - canvas.height));
   }
 
-  checkBossArenaEntry() {
-    if (!this.bossArenaUnlocked) return;
-    if (this.inBossArena) return;
+  checkPortalEntry() {
+    const p = this.level.bossPortal;
 
-    const a = this.level.bossArena;
-    if (!a) return;
+    if (!p) return;
 
-    const d = distance(game.player.x, game.player.y, a.entranceX, a.entranceY);
-
-    if (d < 70) {
-      this.enterBossArena();
+    if (distance(game.player.x, game.player.y, p.x, p.y) < 70) {
+      game.enterBossMap();
     }
   }
 
-  enterBossArena() {
-    const a = this.level.bossArena;
+  activateGateKeeperPhase2() {
+    this.gateKeeperInferno = true;
+  }
 
-    this.inBossArena = true;
-    this.bossArenaEntered = true;
+  activateCerberusPhase2() {
+    this.cerberusShrink = true;
+  }
 
-    game.player.x = a.playerSpawn.x;
-    game.player.y = a.playerSpawn.y;
-    game.player.projectiles = [];
-    game.player.invincible = 1000;
+  activateDevilAnger() {
+    this.devilsAnger = true;
+  }
 
-    this.beams = [];
-    this.enemies = [];
+  activateDevilFinal() {
+    this.devilFinal = true;
+  }
 
-    const bossSpot = this.findNearestSafeSpot(a.bossPos.x, a.bossPos.y);
-    this.boss = new Boss(this.level.boss, bossSpot.x, bossSpot.y);
+  devilSummon() {
+    const circles = this.currentArena.summonCircles || [];
 
-    this.updateLevelUI();
+    toast("Summon");
 
-    toast(this.level.boss);
+    for (const c of circles) {
+      this.particles.burst(c.x, c.y, "#ffffff", 25);
+    }
+
+    if (this.enemies.length >= 4) return;
+
+    const spots = circles.length ? circles : [{ x: game.player.x + 180, y: game.player.y }];
+
+    for (let i = 0; i < 2; i++) {
+      const c = spots[i % spots.length];
+      const summoned = new Enemy(choice(["hound", "gargoyle"]), c.x, c.y);
+      summoned.awake = true;
+      this.enemies.push(summoned);
+    }
   }
 
   draw(ctx) {
@@ -2385,30 +2680,22 @@ class World {
     ctx.translate(shakeX, shakeY);
 
     this.drawFloor(ctx);
+    this.drawArenaSpecials(ctx);
     this.drawDecor(ctx);
-    this.drawBossGate(ctx);
 
-    for (const h of this.hazards) {
-      h.draw(ctx, this.cameraX, this.cameraY);
-    }
+    if (!this.isBossMap) this.drawPortal(ctx);
 
-    for (const c of this.chests) {
-      c.draw(ctx, this.cameraX, this.cameraY);
-    }
+    for (const h of this.hazards) h.draw(ctx, this.cameraX, this.cameraY);
+    for (const v of this.vents) v.draw(ctx, this.cameraX, this.cameraY);
+    for (const c of this.chests) c.draw(ctx, this.cameraX, this.cameraY);
+    for (const e of this.enemies) e.draw(ctx, this.cameraX, this.cameraY);
 
-    for (const e of this.enemies) {
-      e.draw(ctx, this.cameraX, this.cameraY);
-    }
-
-    if (this.boss && !this.boss.dead) {
-      this.boss.draw(ctx, this.cameraX, this.cameraY);
-    }
+    if (this.boss && !this.boss.dead) this.boss.draw(ctx, this.cameraX, this.cameraY);
 
     game.player.draw(ctx, this.cameraX, this.cameraY);
 
-    for (const b of this.beams) {
-      b.draw(ctx, this.cameraX, this.cameraY);
-    }
+    for (const b of this.beams) b.draw(ctx, this.cameraX, this.cameraY);
+    for (const p of this.projectiles) p.draw(ctx, this.cameraX, this.cameraY);
 
     this.particles.draw(ctx, this.cameraX, this.cameraY);
 
@@ -2450,11 +2737,6 @@ class World {
 
         ctx.fillStyle = "rgba(255,120,40,0.035)";
         ctx.fillRect(x + 31, y + 32, 6, 6);
-
-        if (Math.abs(n) > 1.2) {
-          ctx.fillStyle = "rgba(255,255,255,0.035)";
-          ctx.fillRect(x + 14, y + 32, 18, 3);
-        }
       }
     }
 
@@ -2468,7 +2750,7 @@ class World {
     );
 
     glow.addColorStop(0, "transparent");
-    glow.addColorStop(1, t.glow);
+    glow.addColorStop(1, this.devilsAnger ? "rgba(255,0,0,0.32)" : t.glow);
 
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2485,56 +2767,140 @@ class World {
     }
   }
 
-  drawBossGate(ctx) {
-    const a = this.level.bossArena;
-    if (!a) return;
+  drawArenaSpecials(ctx) {
+    if (!this.isBossMap) return;
 
-    const x = a.entranceX - this.cameraX;
-    const y = a.entranceY - this.cameraY;
+    const arena = this.currentArena;
+
+    if (arena.type === "gatekeeper_chokepoint" && this.gateKeeperInferno) {
+      ctx.save();
+
+      const x = arena.runway.x1 - this.cameraX;
+      const y = arena.runway.y1 - this.cameraY;
+
+      ctx.strokeStyle = "rgba(255,40,20,0.9)";
+      ctx.lineWidth = 9;
+      ctx.shadowColor = "#ff2d1c";
+      ctx.shadowBlur = 22;
+
+      ctx.beginPath();
+      ctx.rect(130 - this.cameraX, 250 - this.cameraY, 1640, 700);
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = "#ff2d1c";
+      ctx.fillRect(130 - this.cameraX, 250 - this.cameraY, 1640, 700);
+
+      ctx.restore();
+    }
+
+    if (arena.type === "cerberus_colosseum") {
+      const cx = arena.centerX - this.cameraX;
+      const cy = arena.centerY - this.cameraY;
+      const r = this.cerberusShrink ? arena.phase2Radius : arena.radius;
+
+      ctx.save();
+
+      SpriteFX.glow(ctx, cx, cy, r + 140, "rgba(255,70,20,0.16)");
+
+      ctx.strokeStyle = this.cerberusShrink
+        ? "rgba(255,40,20,0.95)"
+        : "rgba(255,120,30,0.65)";
+
+      ctx.lineWidth = this.cerberusShrink ? 12 : 7;
+      ctx.shadowColor = "#ff3b24";
+      ctx.shadowBlur = 24;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    if (arena.type === "devil_sanctum") {
+      ctx.save();
+
+      if (this.devilsAnger) {
+        ctx.fillStyle = this.devilFinal
+          ? "rgba(255,0,0,0.22)"
+          : "rgba(180,0,0,0.14)";
+
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      for (const c of arena.summonCircles || []) {
+        const x = c.x - this.cameraX;
+        const y = c.y - this.cameraY;
+
+        SpriteFX.glow(ctx, x, y, this.phase2 ? 80 : 55, "rgba(255,255,255,0.18)");
+
+        ctx.strokeStyle = this.devilsAnger
+          ? "rgba(255,255,255,0.9)"
+          : "rgba(255,255,255,0.28)";
+
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.arc(x, y, 58, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x - 42, y);
+        ctx.lineTo(x + 42, y);
+        ctx.moveTo(x, y - 42);
+        ctx.lineTo(x, y + 42);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+  }
+
+  drawPortal(ctx) {
+    if (!this.portalUnlocked) return;
+
+    const p = this.level.bossPortal;
+    if (!p) return;
+
+    const x = p.x - this.cameraX;
+    const y = p.y - this.cameraY;
 
     ctx.save();
 
-    if (this.bossArenaUnlocked && !this.inBossArena) {
-      SpriteFX.glow(ctx, x, y, 90, "rgba(255,159,46,0.45)");
+    SpriteFX.glow(ctx, x, y, 95, "rgba(255,80,20,0.45)");
 
-      ctx.strokeStyle = "#ff9f2e";
-      ctx.lineWidth = 5;
+    ctx.strokeStyle = "#ff9f2e";
+    ctx.lineWidth = 5;
+    ctx.shadowColor = "#ff3b24";
+    ctx.shadowBlur = 24;
 
-      ctx.beginPath();
-      ctx.arc(x, y, 46 + Math.sin(this.frame / 180) * 4, 0, Math.PI * 2);
-      ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, 46 + Math.sin(this.frame / 180) * 5, 0, Math.PI * 2);
+    ctx.stroke();
 
-      ctx.font = "800 12px Inter, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillStyle = "rgba(255,240,210,0.9)";
-      ctx.fillText("BOSS ARENA", x, y - 62);
-    } else if (!this.inBossArena) {
-      ctx.globalAlpha = 0.55;
+    ctx.fillStyle = "rgba(255,80,20,0.22)";
+    ctx.beginPath();
+    ctx.arc(x, y, 28 + Math.sin(this.frame / 140) * 4, 0, Math.PI * 2);
+    ctx.fill();
 
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.beginPath();
-      ctx.arc(x, y, 44, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = "rgba(255,255,255,0.12)";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      ctx.font = "700 11px Inter, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillStyle = "rgba(255,255,255,0.45)";
-      ctx.fillText(`${this.enemies.length} enemies left`, x, y - 58);
-    }
+    ctx.shadowBlur = 0;
+    ctx.font = "800 12px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,240,210,0.9)";
+    ctx.fillText("BOSS PORTAL", x, y - 62);
 
     ctx.restore();
   }
 
   drawDecor(ctx) {
     for (const d of this.decor) {
+      if (d.broken) continue;
+
       const x = d.x - this.cameraX;
       const y = d.y - this.cameraY;
 
-      if (x < -300 || y < -300 || x > canvas.width + 300 || y > canvas.height + 300) {
+      if (x < -400 || y < -400 || x > canvas.width + 400 || y > canvas.height + 400) {
         continue;
       }
 
@@ -2546,21 +2912,73 @@ class World {
         ctx.strokeRect(x, y, d.w, d.h);
       }
 
+      if (d.type === "circleArena") {
+        ctx.save();
+        SpriteFX.glow(ctx, x, y, d.r + 80, "rgba(255,70,20,0.16)");
+        ctx.fillStyle = "rgba(255,255,255,0.025)";
+        ctx.beginPath();
+        ctx.arc(x, y, d.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(255,120,30,0.35)";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (d.type === "lavaMoat") {
+        ctx.save();
+        SpriteFX.glow(ctx, x, y, d.r + 80, "rgba(255,70,20,0.22)");
+        ctx.strokeStyle = "rgba(255,70,20,0.45)";
+        ctx.lineWidth = 55;
+        ctx.beginPath();
+        ctx.arc(x, y, d.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       if (d.type === "corridor") {
         ctx.fillStyle = "rgba(255,255,255,0.018)";
         ctx.fillRect(x, y, d.w, d.h);
       }
 
-      if (d.type === "wall" || d.type === "barricade" || d.type === "rubble") {
-        SpriteFX.shadow(ctx, x, y + 28, d.w * 0.42, 12);
+      if (d.type === "runway") {
+        ctx.save();
 
-        ctx.fillStyle = this.theme.wall;
+        ctx.strokeStyle = "rgba(255,90,30,0.35)";
+        ctx.lineWidth = d.width;
+
+        ctx.beginPath();
+        ctx.moveTo(d.x1 - this.cameraX, d.y1 - this.cameraY);
+        ctx.lineTo(d.x2 - this.cameraX, d.y2 - this.cameraY);
+        ctx.stroke();
+
+        ctx.strokeStyle = "rgba(255,220,160,0.18)";
+        ctx.lineWidth = 5;
+
+        ctx.beginPath();
+        ctx.moveTo(d.x1 - this.cameraX, d.y1 - this.cameraY);
+        ctx.lineTo(d.x2 - this.cameraX, d.y2 - this.cameraY);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      if (
+        d.type === "wall" ||
+        d.type === "barricade" ||
+        d.type === "rubble" ||
+        d.type === "breakPillar"
+      ) {
+        SpriteFX.shadow(ctx, x, y + 28, (d.w || 90) * 0.42, 12);
+
+        ctx.fillStyle = d.type === "breakPillar" ? "#1a0e0a" : this.theme.wall;
         ctx.fillRect(x - d.w / 2, y - d.h / 2, d.w, d.h);
 
-        ctx.fillStyle = "rgba(255,255,255,0.05)";
+        ctx.fillStyle = "rgba(255,255,255,0.06)";
         ctx.fillRect(x - d.w / 2 + 8, y - d.h / 2 + 8, d.w * 0.45, 5);
 
-        ctx.strokeStyle = "rgba(255,255,255,0.09)";
+        ctx.strokeStyle = "rgba(255,255,255,0.1)";
         ctx.strokeRect(x - d.w / 2, y - d.h / 2, d.w, d.h);
       }
 
@@ -2604,8 +3022,11 @@ class World {
         ctx.fillRect(x + d.w * 0.35, y, d.w * 0.16, d.h);
       }
 
-      if (d.type === "carpet") {
-        ctx.fillStyle = "rgba(150,20,18,0.52)";
+      if (d.type === "carpet" || d.type === "crimsonCarpet") {
+        ctx.fillStyle = d.type === "crimsonCarpet"
+          ? "rgba(130,0,20,0.72)"
+          : "rgba(150,20,18,0.52)";
+
         ctx.fillRect(x, y, d.w, d.h);
 
         ctx.fillStyle = "rgba(255,150,70,0.16)";
@@ -2636,6 +3057,27 @@ class World {
         ctx.strokeRect(x, y, d.w, d.h);
       }
 
+      if (d.type === "runeCircle" || d.type === "summonCircle") {
+        SpriteFX.glow(ctx, x, y, d.r + 50, "rgba(255,255,255,0.12)");
+
+        ctx.strokeStyle = d.type === "summonCircle"
+          ? "rgba(255,255,255,0.5)"
+          : "rgba(210,225,255,0.35)";
+
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.arc(x, y, d.r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x - d.r * 0.75, y);
+        ctx.lineTo(x + d.r * 0.75, y);
+        ctx.moveTo(x, y - d.r * 0.75);
+        ctx.lineTo(x, y + d.r * 0.75);
+        ctx.stroke();
+      }
+
       if (d.type === "abyssRock") {
         ctx.fillStyle = "rgba(0,0,0,0.38)";
         ctx.beginPath();
@@ -2659,13 +3101,25 @@ class World {
       }
 
       if (d.type === "stainedGlass") {
-        SpriteFX.glow(ctx, x, y, 100, "rgba(255,0,60,0.16)");
+        const red = this.devilsAnger;
 
-        ctx.fillStyle = "rgba(255,0,60,0.18)";
+        SpriteFX.glow(ctx, x, y, 100, red ? "rgba(255,0,0,0.25)" : "rgba(255,0,60,0.16)");
+
+        ctx.fillStyle = red ? "rgba(255,0,0,0.24)" : "rgba(255,0,60,0.18)";
         ctx.fillRect(x - 45, y - 90, 90, 180);
 
-        ctx.strokeStyle = "rgba(255,255,255,0.1)";
+        ctx.strokeStyle = "rgba(255,255,255,0.12)";
         ctx.strokeRect(x - 45, y - 90, 90, 180);
+
+        if (this.devilFinal) {
+          ctx.strokeStyle = "rgba(255,255,255,0.45)";
+          ctx.beginPath();
+          ctx.moveTo(x - 40, y - 80);
+          ctx.lineTo(x + 40, y + 80);
+          ctx.moveTo(x + 40, y - 60);
+          ctx.lineTo(x - 40, y + 65);
+          ctx.stroke();
+        }
       }
 
       if (d.type === "bones") {
@@ -2721,7 +3175,7 @@ class World {
     ctx.fillStyle = "#ffd078";
     ctx.fillRect(x + (game.player.x / this.width) * w - 3, y + (game.player.y / this.height) * h - 3, 6, 6);
 
-    if (this.boss && !this.boss.dead && this.inBossArena) {
+    if (this.boss && !this.boss.dead && this.isBossMap) {
       ctx.fillStyle = "#ff3b24";
       ctx.fillRect(x + (this.boss.x / this.width) * w - 4, y + (this.boss.y / this.height) * h - 4, 8, 8);
     }
@@ -2800,12 +3254,14 @@ class Game {
     });
 
     const tryAgain = document.getElementById("btnTryAgain");
+
     if (tryAgain) {
       tryAgain.textContent = "Respawn";
       tryAgain.addEventListener("click", () => this.respawnCurrentLevel());
     }
 
     const menuBtn = document.getElementById("btnGameOverMenu");
+
     if (menuBtn) {
       menuBtn.textContent = "Back To Main Menu";
       menuBtn.addEventListener("click", () => location.reload());
@@ -2841,7 +3297,7 @@ class Game {
 
     this.player = new Player(classId);
     this.levelIndex = 0;
-    this.world = new World(this.levelIndex);
+    this.world = new World(this.levelIndex, "normal");
 
     this.running = true;
     this.paused = false;
@@ -2854,7 +3310,6 @@ class Game {
     toast("Begin");
 
     this.updateHUD();
-
     this.startLoop();
   }
 
@@ -2871,7 +3326,7 @@ class Game {
   restartRun() {
     this.player = new Player(this.selectedClass || "warrior");
     this.levelIndex = 0;
-    this.world = new World(0);
+    this.world = new World(0, "normal");
 
     this.running = true;
     this.paused = false;
@@ -2885,6 +3340,18 @@ class Game {
 
     this.updateHUD();
     this.startLoop();
+  }
+
+  enterBossMap() {
+    SoundFX.portal();
+
+    this.world = new World(this.levelIndex, "boss");
+
+    document.getElementById("bossHud")?.classList.remove("hidden");
+
+    toast(LEVELS[this.levelIndex].bossArenaMap.name);
+
+    this.updateHUD();
   }
 
   respawnCurrentLevel() {
@@ -2902,8 +3369,9 @@ class Game {
     this.player.invincible = 1200;
     this.player.speedBoostTimer = 0;
     this.player.attackBoostTimer = 0;
+    this.player.stunned = 0;
 
-    this.world = new World(this.levelIndex);
+    this.world = new World(this.levelIndex, "normal");
 
     this.running = true;
     this.paused = false;
@@ -3055,7 +3523,7 @@ class Game {
     this.player.upgradeWeapon();
 
     this.levelIndex++;
-    this.world = new World(this.levelIndex);
+    this.world = new World(this.levelIndex, "normal");
 
     toast(LEVELS[this.levelIndex].short);
     this.updateHUD();
