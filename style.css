@@ -1270,7 +1270,7 @@ body {
 
 /* Make top HUD smaller and cleaner */
 #hudTop {
-  padding: 
+  padding: 0 
 
 }
 
@@ -1655,3 +1655,4 @@ body {
     top: 15%;
   }
 }
+
