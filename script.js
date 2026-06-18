@@ -69,14 +69,6 @@ window.addEventListener("keydown", e => {
   ) {
     e.preventDefault();
   }
-
-  if (e.code === "KeyM" && typeof MusicManager !== "undefined") {
-    const muted = MusicManager.toggleMute();
-
-    if (typeof toast === "function") {
-      toast(muted ? "Music Muted" : "Music On");
-    }
-  }
 });
 
 window.addEventListener("keyup", e => {
@@ -100,8 +92,7 @@ const SOULS_PER_LEVEL = 5;
 const SETTINGS = {
   shake: true,
   particles: true,
-  sound: true,
-  music: true
+  sound: true
 };
 
 function clamp(v, min, max) {
@@ -344,151 +335,6 @@ const SoundFX = {
     }, 110);
   }
 };
-
-/* ================= BACKGROUND MUSIC =================
-   Put your music files in this folder:
-
-   assets/audio/Planning.mp3
-   assets/audio/Adventure Awaits.mp3
-   assets/audio/Cockroaches.mp3
-   assets/audio/Suspensify.mp3
-
-   Music map:
-   - Landing / menus: Planning.mp3
-   - Tutorial + Layer 1: Adventure Awaits.mp3
-   - Layer 2: Cockroaches.mp3
-   - Layer 3 / final layer: Suspensify.mp3
-==================================================== */
-
-const MusicManager = {
-  tracks: {},
-  current: null,
-  currentName: "",
-  volume: 0.45,
-  muted: false,
-  unlocked: false,
-  pendingTrack: "menu",
-
-  init() {
-    this.tracks = {
-      menu: this.createTrack("assets/audio/Planning.mp3"),
-      layer1: this.createTrack("assets/audio/Adventure Awaits.mp3"),
-      layer2: this.createTrack("assets/audio/Cockroaches.mp3"),
-      layer3: this.createTrack("assets/audio/Suspensify.mp3")
-    };
-
-    const unlockOnce = () => this.unlock();
-
-    document.addEventListener("click", unlockOnce, { once: true });
-    document.addEventListener("keydown", unlockOnce, { once: true });
-
-    const possibleVolumeSliders = [
-      "musicVolumeSlider",
-      "volumeSlider",
-      "sVolume",
-      "soundSlider"
-    ];
-
-    for (const id of possibleVolumeSliders) {
-      const slider = document.getElementById(id);
-
-      if (!slider) continue;
-
-      slider.addEventListener("input", e => {
-        this.setVolume(Number(e.target.value) / 100);
-      });
-    }
-  },
-
-  createTrack(src) {
-    const audio = new Audio(src);
-
-    audio.loop = true;
-    audio.preload = "auto";
-    audio.volume = this.volume;
-
-    return audio;
-  },
-
-  unlock() {
-    this.unlocked = true;
-
-    if (this.pendingTrack) {
-      this.play(this.pendingTrack);
-    }
-  },
-
-  play(name) {
-    if (!SETTINGS.music) return;
-
-    const next = this.tracks[name];
-    if (!next) return;
-
-    this.pendingTrack = name;
-
-    if (this.currentName === name && this.current && !this.current.paused) {
-      return;
-    }
-
-    if (this.current && this.current !== next) {
-      this.current.pause();
-      this.current.currentTime = 0;
-    }
-
-    this.current = next;
-    this.currentName = name;
-    this.current.volume = this.muted ? 0 : this.volume;
-
-    if (!this.unlocked) return;
-
-    this.current.play().catch(() => {
-      /* Browser is waiting for a click/key press before audio can start. */
-    });
-  },
-
-  playForLevel(levelIndex) {
-    if (levelIndex <= 1) {
-      this.play("layer1");
-      return;
-    }
-
-    if (levelIndex === 2) {
-      this.play("layer2");
-      return;
-    }
-
-    this.play("layer3");
-  },
-
-  stop() {
-    if (!this.current) return;
-
-    this.current.pause();
-    this.current.currentTime = 0;
-    this.current = null;
-    this.currentName = "";
-  },
-
-  setVolume(value) {
-    this.volume = clamp(value, 0, 1);
-
-    Object.values(this.tracks).forEach(track => {
-      track.volume = this.muted ? 0 : this.volume;
-    });
-  },
-
-  toggleMute() {
-    this.muted = !this.muted;
-
-    Object.values(this.tracks).forEach(track => {
-      track.volume = this.muted ? 0 : this.volume;
-    });
-
-    return this.muted;
-  }
-};
-
-MusicManager.init();
 
 /* ================= GAME DATA ================= */
 
@@ -797,10 +643,6 @@ class ParticleSystem {
         life: rand(0.35, 1.15),
         color
       });
-    }
-  }
-
-        });
     }
   }
 
@@ -1601,8 +1443,7 @@ class Projectile {
     }
 
     if (world.collides(this.x, this.y, 8)) {
-
-            world.particles.burst(this.x, this.y, this.color, 14);
+      world.particles.burst(this.x, this.y, this.color, 14);
       this.dead = true;
       return;
     }
@@ -2577,125 +2418,75 @@ class World {
       game.player.projectiles = [];
       game.player.invincible = 1200;
     }
-
-    this.portalUnlocked = false;
-    this.showBossHUD();
   }
 
   addRandomDecor() {
-    const count = Math.floor((this.width * this.height) / 170000);
+    const max = this.levelIndex === 0 ? 4 : 10;
 
-    for (let i = 0; i < count; i++) {
-      const x = rand(160, this.width - 160);
-      const y = rand(160, this.height - 160);
-
-      if (this.collides(x, y, 36)) continue;
+    for (let i = 0; i < max; i++) {
+      const p = this.findSafeOpenSpot();
 
       this.decor.push({
-        type: choice(["bonePile", "chain", "candle", "crack"]),
-        x,
-        y,
-        s: rand(0.8, 1.3)
+        type: choice(["rubble", "barricade"]),
+        x: p.x,
+        y: p.y,
+        w: rand(85, 135),
+        h: rand(55, 95)
       });
     }
   }
 
-  update(dt) {
-    const s = dt / 1000;
+  updateLevelUI() {
+    const layerTitle = document.getElementById("layerTitle");
+    const objectiveText = document.getElementById("objectiveText");
 
-    this.frame += dt;
-    this.portalPulse += dt;
-
-    if (this.shake > 0) {
-      this.shake -= dt * 0.08;
+    if (layerTitle) {
+      layerTitle.textContent = this.isBossMap
+        ? this.currentArena.name
+        : this.level.short;
     }
 
-    this.updateCamera();
-
-    for (const h of this.hazards) {
-      h.update(dt, game.player, this);
-    }
-
-    for (const v of this.vents) {
-      v.update(dt, this);
-    }
-
-    for (const c of this.chests) {
-      c.update(dt, this);
-    }
-
-    for (const e of this.enemies) {
-      e.update(dt, this);
-    }
-
-    this.enemies = this.enemies.filter(e => !e.dead);
-
-    if (this.boss) {
-      this.boss.update(dt, this);
-    }
-
-    for (const b of this.beams) {
-      b.update(dt, this);
-    }
-
-    this.beams = this.beams.filter(b => !b.dead);
-
-    for (const p of this.projectiles) {
-      p.update(dt, this);
-    }
-
-    this.projectiles = this.projectiles.filter(p => !p.dead);
-
-    this.particles.update(dt);
-
-    if (!this.isBossMap && this.enemies.length === 0 && !this.portalUnlocked) {
-      this.portalUnlocked = true;
-      SoundFX.portal();
-      toast("Boss Portal Opened");
-    }
-
-    if (!this.isBossMap && this.portalUnlocked && touching(game.player, this.level.portal, 52)) {
-      game.enterBossMap();
-    }
-
-    if (this.isBossMap && this.boss && this.boss.dead) {
-      this.hideBossHUD();
+    if (objectiveText) {
+      objectiveText.textContent = this.isBossMap
+        ? this.level.bossObjective
+        : this.level.objective;
     }
   }
 
-  updateCamera() {
-    const p = game.player;
+  hideBossHUD() {
+    document.getElementById("bossHud")?.classList.add("hidden");
+  }
 
-    let targetX = p.x - canvas.width / 2;
-    let targetY = p.y - canvas.height / 2;
-
-    targetX = clamp(targetX, 0, Math.max(0, this.width - canvas.width));
-    targetY = clamp(targetY, 0, Math.max(0, this.height - canvas.height));
-
-    this.cameraX += (targetX - this.cameraX) * 0.12;
-    this.cameraY += (targetY - this.cameraY) * 0.12;
-
-    if (this.shake > 0 && SETTINGS.shake) {
-      this.cameraX += rand(-this.shake, this.shake);
-      this.cameraY += rand(-this.shake, this.shake);
-    }
+  isBlockingType(type) {
+    return ["wall", "column", "pillar", "throne", "rubble", "barricade", "breakPillar"].includes(type);
   }
 
   collides(x, y, radius = 18) {
-    if (x < radius || y < radius || x > this.width - radius || y > this.height - radius) {
+    if (x < 70 || y < 70 || x > this.width - 70 || y > this.height - 70) {
       return true;
     }
 
+    if (this.isBossMap && this.currentArena.type === "cerberus_colosseum") {
+      const r = this.cerberusShrink ? this.currentArena.phase2Radius : this.currentArena.radius;
+      const d = distance(x, y, this.currentArena.centerX, this.currentArena.centerY);
+
+      if (d > r - radius) return true;
+    }
+
     for (const d of this.decor) {
-      if (
-        d.type === "pillar" ||
-        d.type === "breakPillar" ||
-        d.type === "wall" ||
-        d.type === "throne"
-      ) {
-        if (!d.broken && distance(x, y, d.x, d.y) < (d.r || 46) + radius) {
-          return true;
-        }
+      if (!this.isBlockingType(d.type)) continue;
+      if (d.broken) continue;
+
+      const w = d.w || 115;
+      const h = d.h || 115;
+
+      const left = d.x - w / 2 - radius;
+      const right = d.x + w / 2 + radius;
+      const top = d.y - h / 2 - radius;
+      const bottom = d.y + h / 2 + radius;
+
+      if (x > left && x < right && y > top && y < bottom) {
+        return true;
       }
     }
 
@@ -2703,31 +2494,66 @@ class World {
   }
 
   findNearestSafeSpot(x, y) {
-    if (!this.collides(x, y, 24)) return { x, y };
+    if (!this.collides(x, y, 22)) {
+      return { x, y };
+    }
 
-    for (let r = 25; r <= 260; r += 25) {
+    for (let r = 40; r <= 420; r += 35) {
       for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
         const nx = x + Math.cos(a) * r;
         const ny = y + Math.sin(a) * r;
 
-        if (!this.collides(nx, ny, 24)) {
+        if (!this.collides(nx, ny, 22)) {
           return { x: nx, y: ny };
         }
       }
     }
 
-    return { x: this.width / 2, y: this.height / 2 };
+    if (this.isBossMap) {
+      return { x: this.currentArena.playerStart.x + 140, y: this.currentArena.playerStart.y };
+    }
+
+    return { x: this.level.playerStart.x + 140, y: this.level.playerStart.y };
   }
 
-  findSafeSpotNear(x, y, minR = 35, maxR = 120) {
-    for (let i = 0; i < 40; i++) {
-      const a = rand(0, Math.PI * 2);
-      const r = rand(minR, maxR);
+  findSafeOpenSpot() {
+    for (let i = 0; i < 80; i++) {
+      const x = rand(420, this.width - 420);
+      const y = rand(420, this.height - 420);
 
-      const nx = x + Math.cos(a) * r;
-      const ny = y + Math.sin(a) * r;
+      if (this.collides(x, y, 50)) continue;
 
-      if (!this.collides(nx, ny, 24)) {
+      if (distance(x, y, this.level.playerStart.x, this.level.playerStart.y) < 350) {
+        continue;
+      }
+
+      let tooClose = false;
+
+      for (const e of this.level.enemies) {
+        if (distance(x, y, e.x, e.y) < 130) {
+          tooClose = true;
+          break;
+        }
+      }
+
+      if (!tooClose) return { x, y };
+    }
+
+    return {
+      x: rand(500, this.width - 500),
+      y: rand(500, this.height - 500)
+    };
+  }
+
+  findSafeSpotNear(x, y, minRadius = 120, maxRadius = 320) {
+    for (let i = 0; i < 60; i++) {
+      const angle = rand(0, Math.PI * 2);
+      const r = rand(minRadius, maxRadius);
+
+      const nx = x + Math.cos(angle) * r;
+      const ny = y + Math.sin(angle) * r;
+
+      if (!this.collides(nx, ny, 26)) {
         return { x: nx, y: ny };
       }
     }
@@ -2736,14 +2562,15 @@ class World {
   }
 
   hasLineOfSight(x1, y1, x2, y2) {
-    const steps = Math.ceil(distance(x1, y1, x2, y2) / 32);
+    const d = distance(x1, y1, x2, y2);
+    const steps = Math.max(6, Math.floor(d / 42));
 
-    for (let i = 0; i <= steps; i++) {
+    for (let i = 1; i < steps; i++) {
       const t = i / steps;
       const x = x1 + (x2 - x1) * t;
       const y = y1 + (y2 - y1) * t;
 
-      if (this.collides(x, y, 12)) {
+      if (this.collides(x, y, 8)) {
         return false;
       }
     }
@@ -2751,319 +2578,606 @@ class World {
     return true;
   }
 
-  devilSummon() {
-    if (!this.currentArena) return;
+  update(dt) {
+    this.frame += dt;
 
-    const circles = this.currentArena.summonCircles || [];
-    const livingSummons = this.enemies.filter(e => e.type === "hound" || e.type === "gargoyle").length;
-    const maxSummons = this.boss?.phase3 ? 4 : 3;
+    this.particles.update(dt);
 
-    if (livingSummons >= maxSummons) {
-      this.boss.specialCooldown = 1900;
-      return;
+    for (const b of this.beams) b.update(dt, this);
+    this.beams = this.beams.filter(b => !b.dead);
+
+    for (const p of this.projectiles) p.update(dt, this);
+    this.projectiles = this.projectiles.filter(p => !p.dead);
+
+    for (const v of this.vents) v.update(dt, this);
+
+    for (const h of this.hazards) h.update(dt, game.player, this);
+
+    for (const c of this.chests) c.update(dt, this);
+
+    for (const e of this.enemies) e.update(dt, this);
+    this.enemies = this.enemies.filter(e => !e.dead);
+
+    if (!this.isBossMap && !this.portalUnlocked && this.enemies.length === 0) {
+      this.portalUnlocked = true;
+      SoundFX.portal();
+      toast("Boss Portal Open");
     }
 
-    const slots = circles.slice(0, maxSummons);
-
-    for (const c of slots) {
-      if (this.enemies.length >= maxSummons) break;
-
-      const safe = this.findNearestSafeSpot(c.x, c.y);
-      const type = Math.random() < 0.55 ? "hound" : "gargoyle";
-
-      const enemy = new Enemy(type, safe.x, safe.y);
-      enemy.awake = true;
-
-      this.enemies.push(enemy);
-      this.particles.burst(safe.x, safe.y, "#ff2d1c", 30);
+    if (!this.isBossMap && this.portalUnlocked) {
+      this.checkPortalEntry();
     }
 
-    toast("Summon");
+    if (this.boss && !this.boss.dead) {
+      this.boss.update(dt, this);
+    }
+
+    this.cameraX += (game.player.x - canvas.width / 2 - this.cameraX) * 0.08;
+    this.cameraY += (game.player.y - canvas.height / 2 - this.cameraY) * 0.08;
+
+    this.cameraX = clamp(this.cameraX, 0, Math.max(0, this.width - canvas.width));
+    this.cameraY = clamp(this.cameraY, 0, Math.max(0, this.height - canvas.height));
   }
 
-  activateDevilAnger() {
-    this.devilsAnger = true;
-    toast("Devil's Anger");
-    this.particles.burst(this.width / 2, this.height / 2, "#ff2d1c", 80);
-  }
+  checkPortalEntry() {
+    const p = this.level.bossPortal;
 
-  activateDevilFinal() {
-    this.devilFinal = true;
-    toast("Final Rage");
-    this.particles.burst(this.width / 2, this.height / 2, "#ffd078", 110);
-  }
+    if (!p) return;
 
-  activateCerberusPhase2() {
-    this.cerberusShrink = true;
-
-    for (const d of this.decor) {
-      if (d.type === "breakPillar" && Math.random() < 0.5) {
-        d.broken = true;
-        this.particles.burst(d.x, d.y, "#cfc0b5", 32);
-      }
+    if (distance(game.player.x, game.player.y, p.x, p.y) < 70) {
+      game.enterBossMap();
     }
   }
 
   activateGateKeeperPhase2() {
     this.gateKeeperInferno = true;
+  }
 
-    if (this.currentArena?.fireLines) {
-      for (const l of this.currentArena.fireLines) {
-        this.beams.push(
-          new BeamAttack(l.x1, l.y1, l.x2, l.y2, 18, "#ff6a3d", 36, 350, 160)
-        );
-      }
+  activateCerberusPhase2() {
+    this.cerberusShrink = true;
+  }
+
+  activateDevilAnger() {
+    this.devilsAnger = true;
+  }
+
+  activateDevilFinal() {
+    this.devilFinal = true;
+  }
+
+  devilSummon() {
+    const circles = this.currentArena.summonCircles || [];
+
+    toast("Summon");
+
+    for (const c of circles) {
+      this.particles.burst(c.x, c.y, "#ffffff", 25);
     }
-  }
 
-  updateLevelUI() {
-    const levelText = document.getElementById("levelText");
-    const layerText = document.getElementById("layerText");
+    if (this.enemies.length >= 4) return;
 
-    if (levelText) levelText.textContent = `Layer ${this.levelIndex + 1}`;
-    if (layerText) layerText.textContent = this.isBossMap ? this.currentArena.name : this.level.short;
-  }
+    const spots = circles.length ? circles : [{ x: game.player.x + 180, y: game.player.y }];
 
-  showBossHUD() {
-    const bossHud = document.getElementById("bossHud");
-    if (bossHud) bossHud.classList.remove("hidden");
-  }
-
-  hideBossHUD() {
-    const bossHud = document.getElementById("bossHud");
-    if (bossHud) bossHud.classList.add("hidden");
+    for (let i = 0; i < 2; i++) {
+      const c = spots[i % spots.length];
+      const summoned = new Enemy(choice(["hound", "gargoyle"]), c.x, c.y);
+      summoned.awake = true;
+      this.enemies.push(summoned);
+    }
   }
 
   draw(ctx) {
+    let shakeX = 0;
+    let shakeY = 0;
+
+    if (this.shake > 0 && SETTINGS.shake) {
+      shakeX = rand(-this.shake, this.shake);
+      shakeY = rand(-this.shake, this.shake);
+      this.shake *= 0.82;
+    }
+
     ctx.save();
+    ctx.translate(shakeX, shakeY);
 
-    const camX = this.cameraX;
-    const camY = this.cameraY;
+    this.drawFloor(ctx);
+    this.drawArenaSpecials(ctx);
+    this.drawDecor(ctx);
 
-    this.drawBackground(ctx, camX, camY);
-    this.drawDecor(ctx, camX, camY);
+    if (!this.isBossMap) this.drawPortal(ctx);
 
-    for (const h of this.hazards) {
-      h.draw(ctx, camX, camY);
-    }
+    for (const h of this.hazards) h.draw(ctx, this.cameraX, this.cameraY);
+    for (const v of this.vents) v.draw(ctx, this.cameraX, this.cameraY);
+    for (const c of this.chests) c.draw(ctx, this.cameraX, this.cameraY);
+    for (const e of this.enemies) e.draw(ctx, this.cameraX, this.cameraY);
 
-    for (const v of this.vents) {
-      v.draw(ctx, camX, camY);
-    }
+    if (this.boss && !this.boss.dead) this.boss.draw(ctx, this.cameraX, this.cameraY);
 
-    if (!this.isBossMap) {
-      this.drawPortal(ctx, camX, camY);
-    }
+    game.player.draw(ctx, this.cameraX, this.cameraY);
 
-    for (const c of this.chests) {
-      c.draw(ctx, camX, camY);
-    }
+    for (const b of this.beams) b.draw(ctx, this.cameraX, this.cameraY);
+    for (const p of this.projectiles) p.draw(ctx, this.cameraX, this.cameraY);
 
-    for (const e of this.enemies) {
-      e.draw(ctx, camX, camY);
-    }
-
-    if (this.boss) {
-      this.boss.draw(ctx, camX, camY);
-    }
-
-    for (const p of this.projectiles) {
-      p.draw(ctx, camX, camY);
-    }
-
-    for (const b of this.beams) {
-      b.draw(ctx, camX, camY);
-    }
-
-    this.particles.draw(ctx, camX, camY);
-
-    game.player.draw(ctx, camX, camY);
+    this.particles.draw(ctx, this.cameraX, this.cameraY);
 
     this.drawMiniMap(ctx);
 
     ctx.restore();
   }
 
-  drawBackground(ctx, camX, camY) {
-    const theme = this.theme;
+  drawFloor(ctx) {
+    const t = this.theme;
 
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, theme.bgTop);
-    grad.addColorStop(0.55, theme.bgMid);
-    grad.addColorStop(1, theme.bgBot);
-
-    ctx.fillStyle = grad;
+    ctx.fillStyle = t.bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const grid = this.isBossMap ? 160 : 120;
+    const startX = -this.cameraX % TILE;
+    const startY = -this.cameraY % TILE;
 
-    ctx.strokeStyle = theme.grid;
-    ctx.lineWidth = 1;
+    for (let x = startX - TILE; x < canvas.width + TILE; x += TILE) {
+      for (let y = startY - TILE; y < canvas.height + TILE; y += TILE) {
+        const wx = x + this.cameraX;
+        const wy = y + this.cameraY;
 
-    const startX = -((camX * 0.35) % grid);
-    const startY = -((camY * 0.35) % grid);
+        const n =
+          Math.sin(wx * 0.012) +
+          Math.cos(wy * 0.015) +
+          Math.sin((wx + wy) * 0.006);
 
-    for (let x = startX; x < canvas.width; x += grid) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x + 80, canvas.height);
-      ctx.stroke();
+        ctx.fillStyle = n > 0.25 ? t.floor : t.floor2;
+        ctx.fillRect(x, y, TILE - 2, TILE - 2);
+
+        ctx.strokeStyle = t.seam;
+        ctx.strokeRect(x, y, TILE - 2, TILE - 2);
+
+        ctx.fillStyle = "rgba(255,255,255,0.025)";
+        ctx.fillRect(x + 6, y + 8, 7, 7);
+
+        ctx.fillStyle = "rgba(0,0,0,0.17)";
+        ctx.fillRect(x + 25, y + 18, 11, 4);
+
+        ctx.fillStyle = "rgba(255,120,40,0.035)";
+        ctx.fillRect(x + 31, y + 32, 6, 6);
+      }
     }
 
-    for (let y = startY; y < canvas.height; y += grid) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y + 80);
-      ctx.stroke();
-    }
-
-    SpriteFX.glow(
-      ctx,
+    const glow = ctx.createRadialGradient(
       canvas.width / 2,
-      canvas.height + 120,
-      canvas.height * 0.9,
-      theme.glow
+      canvas.height / 2,
+      40,
+      canvas.width / 2,
+      canvas.height / 2,
+      canvas.height * 0.9
     );
+
+    glow.addColorStop(0, "transparent");
+    glow.addColorStop(1, this.devilsAnger ? "rgba(255,0,0,0.32)" : t.glow);
+
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = t.fog;
+
+    for (let i = 0; i < 18; i++) {
+      const fx = (i * 241 - this.cameraX * 0.13 + this.frame * 0.012) % canvas.width;
+      const fy = (i * 157 - this.cameraY * 0.12) % canvas.height;
+
+      ctx.beginPath();
+      ctx.arc(fx, fy, 70 + Math.sin(this.frame / 900 + i) * 18, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
-  drawDecor(ctx, camX, camY) {
-    for (const d of this.decor) {
-      const x = d.x - camX;
-      const y = d.y - camY;
+  drawArenaSpecials(ctx) {
+    if (!this.isBossMap) return;
 
-      if (x < -160 || y < -160 || x > canvas.width + 160 || y > canvas.height + 160) {
+    const arena = this.currentArena;
+
+    if (arena.type === "gatekeeper_chokepoint" && this.gateKeeperInferno) {
+      ctx.save();
+
+      const x = arena.runway.x1 - this.cameraX;
+      const y = arena.runway.y1 - this.cameraY;
+
+      ctx.strokeStyle = "rgba(255,40,20,0.9)";
+      ctx.lineWidth = 9;
+      ctx.shadowColor = "#ff2d1c";
+      ctx.shadowBlur = 22;
+
+      ctx.beginPath();
+      ctx.rect(130 - this.cameraX, 250 - this.cameraY, 1640, 700);
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = "#ff2d1c";
+      ctx.fillRect(130 - this.cameraX, 250 - this.cameraY, 1640, 700);
+
+      ctx.restore();
+    }
+
+    if (arena.type === "cerberus_colosseum") {
+      const cx = arena.centerX - this.cameraX;
+      const cy = arena.centerY - this.cameraY;
+      const r = this.cerberusShrink ? arena.phase2Radius : arena.radius;
+
+      ctx.save();
+
+      SpriteFX.glow(ctx, cx, cy, r + 140, "rgba(255,70,20,0.16)");
+
+      ctx.strokeStyle = this.cerberusShrink
+        ? "rgba(255,40,20,0.95)"
+        : "rgba(255,120,30,0.65)";
+
+      ctx.lineWidth = this.cerberusShrink ? 12 : 7;
+      ctx.shadowColor = "#ff3b24";
+      ctx.shadowBlur = 24;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    if (arena.type === "devil_sanctum") {
+      ctx.save();
+
+      if (this.devilsAnger) {
+        ctx.fillStyle = this.devilFinal
+          ? "rgba(255,0,0,0.22)"
+          : "rgba(180,0,0,0.14)";
+
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      for (const c of arena.summonCircles || []) {
+        const x = c.x - this.cameraX;
+        const y = c.y - this.cameraY;
+
+        SpriteFX.glow(ctx, x, y, this.phase2 ? 80 : 55, "rgba(255,255,255,0.18)");
+
+        ctx.strokeStyle = this.devilsAnger
+          ? "rgba(255,255,255,0.9)"
+          : "rgba(255,255,255,0.28)";
+
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.arc(x, y, 58, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x - 42, y);
+        ctx.lineTo(x + 42, y);
+        ctx.moveTo(x, y - 42);
+        ctx.lineTo(x, y + 42);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+  }
+
+  drawPortal(ctx) {
+    if (!this.portalUnlocked) return;
+
+    const p = this.level.bossPortal;
+    if (!p) return;
+
+    const x = p.x - this.cameraX;
+    const y = p.y - this.cameraY;
+
+    ctx.save();
+
+    SpriteFX.glow(ctx, x, y, 95, "rgba(255,80,20,0.45)");
+
+    ctx.strokeStyle = "#ff9f2e";
+    ctx.lineWidth = 5;
+    ctx.shadowColor = "#ff3b24";
+    ctx.shadowBlur = 24;
+
+    ctx.beginPath();
+    ctx.arc(x, y, 46 + Math.sin(this.frame / 180) * 5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,80,20,0.22)";
+    ctx.beginPath();
+    ctx.arc(x, y, 28 + Math.sin(this.frame / 140) * 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.font = "800 12px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,240,210,0.9)";
+    ctx.fillText("BOSS PORTAL", x, y - 62);
+
+    ctx.restore();
+  }
+
+  drawDecor(ctx) {
+    for (const d of this.decor) {
+      if (d.broken) continue;
+
+      const x = d.x - this.cameraX;
+      const y = d.y - this.cameraY;
+
+      if (x < -400 || y < -400 || x > canvas.width + 400 || y > canvas.height + 400) {
         continue;
       }
 
-      ctx.save();
+      if (d.type === "room") {
+        ctx.fillStyle = "rgba(255,255,255,0.025)";
+        ctx.fillRect(x, y, d.w, d.h);
 
-      if (d.type === "pillar" || d.type === "breakPillar") {
-        SpriteFX.shadow(ctx, x, y + 28, 46, 12);
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.strokeRect(x, y, d.w, d.h);
+      }
 
-        ctx.fillStyle = d.broken ? "rgba(80,60,52,0.5)" : "#241820";
-        ctx.fillRect(x - 24, y - 52, 48, 96);
+      if (d.type === "circleArena") {
+        ctx.save();
+        SpriteFX.glow(ctx, x, y, d.r + 80, "rgba(255,70,20,0.16)");
+        ctx.fillStyle = "rgba(255,255,255,0.025)";
+        ctx.beginPath();
+        ctx.arc(x, y, d.r, 0, Math.PI * 2);
+        ctx.fill();
 
-        ctx.fillStyle = d.broken ? "rgba(120,95,80,0.45)" : "#3b2730";
-        ctx.fillRect(x - 18, y - 46, 36, 84);
+        ctx.strokeStyle = "rgba(255,120,30,0.35)";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        ctx.restore();
+      }
 
-        ctx.strokeStyle = "rgba(255,255,255,0.12)";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x - 24, y - 52, 48, 96);
+      if (d.type === "lavaMoat") {
+        ctx.save();
+        SpriteFX.glow(ctx, x, y, d.r + 80, "rgba(255,70,20,0.22)");
+        ctx.strokeStyle = "rgba(255,70,20,0.45)";
+        ctx.lineWidth = 55;
+        ctx.beginPath();
+        ctx.arc(x, y, d.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
 
-        if (!d.broken) {
-          SpriteFX.glow(ctx, x, y - 30, 36, "rgba(255,120,30,0.18)");
-        }
-      } else if (d.type === "wall") {
-        ctx.fillStyle = "#090506";
+      if (d.type === "corridor") {
+        ctx.fillStyle = "rgba(255,255,255,0.018)";
+        ctx.fillRect(x, y, d.w, d.h);
+      }
+
+      if (d.type === "runway") {
+        ctx.save();
+
+        ctx.strokeStyle = "rgba(255,90,30,0.35)";
+        ctx.lineWidth = d.width;
+
+        ctx.beginPath();
+        ctx.moveTo(d.x1 - this.cameraX, d.y1 - this.cameraY);
+        ctx.lineTo(d.x2 - this.cameraX, d.y2 - this.cameraY);
+        ctx.stroke();
+
+        ctx.strokeStyle = "rgba(255,220,160,0.18)";
+        ctx.lineWidth = 5;
+
+        ctx.beginPath();
+        ctx.moveTo(d.x1 - this.cameraX, d.y1 - this.cameraY);
+        ctx.lineTo(d.x2 - this.cameraX, d.y2 - this.cameraY);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      if (
+        d.type === "wall" ||
+        d.type === "barricade" ||
+        d.type === "rubble" ||
+        d.type === "breakPillar"
+      ) {
+        SpriteFX.shadow(ctx, x, y + 28, (d.w || 90) * 0.42, 12);
+
+        ctx.fillStyle = d.type === "breakPillar" ? "#1a0e0a" : this.theme.wall;
         ctx.fillRect(x - d.w / 2, y - d.h / 2, d.w, d.h);
+
+        ctx.fillStyle = "rgba(255,255,255,0.06)";
+        ctx.fillRect(x - d.w / 2 + 8, y - d.h / 2 + 8, d.w * 0.45, 5);
 
         ctx.strokeStyle = "rgba(255,255,255,0.1)";
         ctx.strokeRect(x - d.w / 2, y - d.h / 2, d.w, d.h);
-      } else if (d.type === "throne") {
-        SpriteFX.glow(ctx, x, y, 110, "rgba(255,0,30,0.28)");
-        ctx.fillStyle = "#0b0506";
-        ctx.fillRect(x - 70, y - 110, 140, 190);
-        ctx.fillStyle = "#241820";
-        ctx.fillRect(x - 44, y - 72, 88, 128);
-        ctx.fillStyle = "#ff2d1c";
-        ctx.fillRect(x - 6, y - 94, 12, 44);
-      } else if (d.type === "bonePile") {
-        ctx.fillStyle = "rgba(207,192,181,0.28)";
-        ctx.fillRect(x - 16, y - 6, 32, 8);
-        ctx.fillRect(x - 10, y - 16, 7, 28);
-        ctx.fillRect(x + 7, y - 14, 7, 26);
-      } else if (d.type === "chain") {
-        ctx.strokeStyle = "rgba(207,192,181,0.23)";
+      }
+
+      if (d.type === "pillar" || d.type === "column") {
+        SpriteFX.shadow(ctx, x, y + 34, 38, 12);
+
+        ctx.fillStyle = this.theme.wall;
+        ctx.fillRect(x - 30, y - 52, 60, 104);
+
+        ctx.fillStyle = "rgba(255,255,255,0.08)";
+        ctx.fillRect(x - 20, y - 44, 8, 88);
+        ctx.fillRect(x + 12, y - 44, 8, 88);
+
+        ctx.strokeStyle = "rgba(255,255,255,0.1)";
+        ctx.strokeRect(x - 30, y - 52, 60, 104);
+      }
+
+      if (d.type === "crystal") {
+        SpriteFX.glow(ctx, x, y, 75, "rgba(255,90,20,0.32)");
+
+        ctx.fillStyle = "#ff6a3d";
+        ctx.beginPath();
+        ctx.moveTo(x, y - 58);
+        ctx.lineTo(x + 28, y + 12);
+        ctx.lineTo(x, y + 48);
+        ctx.lineTo(x - 28, y + 12);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#ffd078";
+        ctx.fillRect(x - 5, y - 20, 10, 34);
+      }
+
+      if (d.type === "lavaRiver") {
+        SpriteFX.glow(ctx, x + d.w / 2, y + d.h / 2, 160, "rgba(255,70,20,0.34)");
+
+        ctx.fillStyle = "rgba(255,70,20,0.34)";
+        ctx.fillRect(x, y, d.w, d.h);
+
+        ctx.fillStyle = "rgba(255,220,100,0.18)";
+        ctx.fillRect(x + d.w * 0.35, y, d.w * 0.16, d.h);
+      }
+
+      if (d.type === "carpet" || d.type === "crimsonCarpet") {
+        ctx.fillStyle = d.type === "crimsonCarpet"
+          ? "rgba(130,0,20,0.72)"
+          : "rgba(150,20,18,0.52)";
+
+        ctx.fillRect(x, y, d.w, d.h);
+
+        ctx.fillStyle = "rgba(255,150,70,0.16)";
+        ctx.fillRect(x, y + d.h / 2 - 8, d.w, 16);
+
+        ctx.strokeStyle = "rgba(255,200,130,0.15)";
+        ctx.strokeRect(x, y, d.w, d.h);
+      }
+
+      if (d.type === "throne") {
+        SpriteFX.glow(ctx, x, y, 120, "rgba(255,0,30,0.25)");
+
+        ctx.fillStyle = "#070307";
+        ctx.fillRect(x - 65, y - 85, 130, 170);
+
+        ctx.fillStyle = "#1a0b10";
+        ctx.fillRect(x - 45, y - 40, 90, 125);
+
+        ctx.strokeStyle = "#ff9f2e";
+        ctx.strokeRect(x - 65, y - 85, 130, 170);
+      }
+
+      if (d.type === "platform") {
+        ctx.fillStyle = "#16191f";
+        ctx.fillRect(x, y, d.w, d.h);
+
+        ctx.strokeStyle = "rgba(210,225,255,0.18)";
+        ctx.strokeRect(x, y, d.w, d.h);
+      }
+
+      if (d.type === "runeCircle" || d.type === "summonCircle") {
+        SpriteFX.glow(ctx, x, y, d.r + 50, "rgba(255,255,255,0.12)");
+
+        ctx.strokeStyle = d.type === "summonCircle"
+          ? "rgba(255,255,255,0.5)"
+          : "rgba(210,225,255,0.35)";
+
         ctx.lineWidth = 3;
+
         ctx.beginPath();
-        ctx.moveTo(x, y - 30);
-        ctx.lineTo(x + 10, y + 26);
+        ctx.arc(x, y, d.r, 0, Math.PI * 2);
         ctx.stroke();
-      } else if (d.type === "candle") {
-        ctx.fillStyle = "#f8efe7";
-        ctx.fillRect(x - 3, y - 12, 6, 18);
-        SpriteFX.glow(ctx, x, y - 15, 28, "rgba(255,159,46,0.32)");
-        ctx.fillStyle = "#ff9f2e";
-        ctx.fillRect(x - 2, y - 18, 4, 7);
-      } else if (d.type === "crack") {
-        ctx.strokeStyle = "rgba(255,90,30,0.16)";
-        ctx.lineWidth = 2;
+
         ctx.beginPath();
-        ctx.moveTo(x - 24, y);
-        ctx.lineTo(x - 4, y + 12);
-        ctx.lineTo(x + 12, y - 6);
-        ctx.lineTo(x + 28, y + 8);
+        ctx.moveTo(x - d.r * 0.75, y);
+        ctx.lineTo(x + d.r * 0.75, y);
+        ctx.moveTo(x, y - d.r * 0.75);
+        ctx.lineTo(x, y + d.r * 0.75);
         ctx.stroke();
       }
 
-      ctx.restore();
+      if (d.type === "abyssRock") {
+        ctx.fillStyle = "rgba(0,0,0,0.38)";
+        ctx.beginPath();
+        ctx.arc(x, y, d.r || 70, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(255,255,255,0.06)";
+        ctx.stroke();
+      }
+
+      if (d.type === "torch") {
+        SpriteFX.glow(ctx, x, y, 72, "rgba(255,120,30,0.35)");
+
+        ctx.fillStyle = "#2b1309";
+        ctx.fillRect(x - 5, y, 10, 36);
+
+        ctx.fillStyle = "#ff9f2e";
+        ctx.beginPath();
+        ctx.arc(x, y - 8, 12, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (d.type === "stainedGlass") {
+        const red = this.devilsAnger;
+
+        SpriteFX.glow(ctx, x, y, 100, red ? "rgba(255,0,0,0.25)" : "rgba(255,0,60,0.16)");
+
+        ctx.fillStyle = red ? "rgba(255,0,0,0.24)" : "rgba(255,0,60,0.18)";
+        ctx.fillRect(x - 45, y - 90, 90, 180);
+
+        ctx.strokeStyle = "rgba(255,255,255,0.12)";
+        ctx.strokeRect(x - 45, y - 90, 90, 180);
+
+        if (this.devilFinal) {
+          ctx.strokeStyle = "rgba(255,255,255,0.45)";
+          ctx.beginPath();
+          ctx.moveTo(x - 40, y - 80);
+          ctx.lineTo(x + 40, y + 80);
+          ctx.moveTo(x + 40, y - 60);
+          ctx.lineTo(x - 40, y + 65);
+          ctx.stroke();
+        }
+      }
+
+      if (d.type === "bones") {
+        ctx.strokeStyle = "rgba(230,220,200,0.35)";
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.moveTo(x - 20, y);
+        ctx.lineTo(x + 20, y + 12);
+        ctx.moveTo(x - 12, y + 18);
+        ctx.lineTo(x + 16, y - 10);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(230,220,200,0.28)";
+        ctx.beginPath();
+        ctx.arc(x - 24, y - 2, 6, 0, Math.PI * 2);
+        ctx.arc(x + 24, y + 14, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
-  }
-
-  drawPortal(ctx, camX, camY) {
-    const portal = this.level.portal;
-    const x = portal.x - camX;
-    const y = portal.y - camY;
-
-    if (!this.portalUnlocked) {
-      ctx.save();
-      ctx.globalAlpha = 0.28;
-      SpriteFX.glow(ctx, x, y, 55, "rgba(255,255,255,0.12)");
-      ctx.strokeStyle = "rgba(255,255,255,0.22)";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(x, y, 32, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-      return;
-    }
-
-    const pulse = Math.sin(this.portalPulse / 180) * 0.5 + 0.5;
-
-    SpriteFX.glow(ctx, x, y, 92 + pulse * 24, "rgba(255,90,20,0.42)");
-
-    ctx.save();
-    ctx.strokeStyle = "#ff9f2e";
-    ctx.lineWidth = 5;
-    ctx.shadowColor = "#ff6a3d";
-    ctx.shadowBlur = 26;
-    ctx.beginPath();
-    ctx.arc(x, y, 34 + pulse * 5, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.font = "800 12px Inter, sans-serif";
-    ctx.fillStyle = "#ffd078";
-    ctx.textAlign = "center";
-    ctx.fillText("BOSS", x, y - 48);
-
-    ctx.restore();
   }
 
   drawMiniMap(ctx) {
     if (!this.showMiniMap) return;
 
-    const w = 150;
-    const h = 96;
-    const x = canvas.width - w - 16;
-    const y = 16;
+    const w = 136;
+    const h = 88;
+
+    const x = canvas.width - w - 18;
+    const y = 98;
 
     ctx.save();
+    ctx.globalAlpha = 0.72;
 
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     ctx.fillRect(x, y, w, h);
 
-    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.strokeStyle = "rgba(255,159,46,0.45)";
     ctx.strokeRect(x, y, w, h);
 
-    const sx = w / this.width;
-    const sy = h / this.height;
+    for (const c of this.chests) {
+      if (c.opened) continue;
 
-    ctx.fillStyle = "#ff3b24";
-    ctx.fillRect(x + game.player.x * sx - 3, y + game.player.y * sy - 3, 6, 6);
+      ctx.fillStyle = "#ff9f2e";
+      ctx.fillRect(x + (c.x / this.width) * w - 2, y + (c.y / this.height) * h - 2, 4, 4);
+    }
 
-    if (this.boss && !this.boss.dead) {
-      ctx.fillStyle = "#ffd078";
-      ctx.fillRect(x + this.boss.x * sx - 4, y + this.boss.y * sy - 4, 8, 8);
+    for (const e of this.enemies) {
+      ctx.fillStyle = "#ff3b24";
+      ctx.fillRect(x + (e.x / this.width) * w - 1, y + (e.y / this.height) * h - 1, 3, 3);
+    }
+
+    ctx.fillStyle = "#ffd078";
+    ctx.fillRect(x + (game.player.x / this.width) * w - 3, y + (game.player.y / this.height) * h - 3, 6, 6);
+
+    if (this.boss && !this.boss.dead && this.isBossMap) {
+      ctx.fillStyle = "#ff3b24";
+      ctx.fillRect(x + (this.boss.x / this.width) * w - 4, y + (this.boss.y / this.height) * h - 4, 8, 8);
     }
 
     ctx.restore();
@@ -3117,10 +3231,7 @@ class Game {
     });
 
     document.querySelectorAll(".back-menu").forEach(btn => {
-      btn.addEventListener("click", () => {
-        showScreen("screen-menu");
-        MusicManager.play("menu");
-      });
+      btn.addEventListener("click", () => showScreen("screen-menu"));
     });
 
     document.querySelectorAll(".class-card").forEach(card => {
@@ -3196,7 +3307,6 @@ class Game {
     document.getElementById("bossHud")?.classList.add("hidden");
 
     showScreen("screen-game");
-    MusicManager.playForLevel(this.levelIndex);
     toast("Begin");
 
     this.updateHUD();
@@ -3226,7 +3336,6 @@ class Game {
     document.getElementById("bossHud")?.classList.add("hidden");
 
     showScreen("screen-game");
-    MusicManager.playForLevel(this.levelIndex);
     toast("Restarted");
 
     this.updateHUD();
@@ -3271,7 +3380,6 @@ class Game {
     document.getElementById("bossHud")?.classList.add("hidden");
 
     showScreen("screen-game");
-    MusicManager.playForLevel(this.levelIndex);
     toast("Respawned");
 
     this.updateHUD();
@@ -3417,7 +3525,6 @@ class Game {
     this.levelIndex++;
     this.world = new World(this.levelIndex, "normal");
 
-    MusicManager.playForLevel(this.levelIndex);
     toast(LEVELS[this.levelIndex].short);
     this.updateHUD();
   }
@@ -3438,5 +3545,3 @@ class Game {
 
 const game = new Game();
 window.game = game;
-
-MusicManager.play("menu");
